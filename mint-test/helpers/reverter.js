@@ -8,13 +8,13 @@ function Reverter(web3) {
       jsonrpc: "2.0",
       method: "evm_revert",
       id: new Date().getTime(),
-      params: [snapshotId]
-    }, (err, result) => {
+      params: [1]
+    }, (err) => {
       if (err) {
         done(err);
       }
       else {
-        this.snapshot(done);
+        done();
       }
     });
   };
