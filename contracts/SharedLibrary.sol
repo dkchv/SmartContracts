@@ -3,14 +3,20 @@ pragma solidity ^0.4.8;
 import "./EternalStorage.sol";
 
 library SharedLibrary {
-    function getCount(address db, string countKey) internal returns(uint) {
-        return EternalStorage(db).getUIntValue(sha3(countKey));
+    function getCount(address db, string countKey) internal returns(uint count) {
+        count = EternalStorage(db).getUIntValue(sha3(countKey));
     }
 
-    function createNext(address db, string countKey) internal returns(uint index) {
-        var count = getCount(db, countKey);
-        EternalStorage(db).addUIntValue(sha3(countKey), 1);
-        return count + 1;
+    function createNext(address db, string countKey) internal returns(uint result) {
+        result = EternalStorage(db).addUIntValue(sha3(countKey), 1);
+    }
+
+    function increment(address db, string countKey) internal returns(uint result) {
+        result = EternalStorage(db).addUIntValue(sha3(countKey), 1);        
+    }
+
+    function decrement(address db, string countKey) internal returns(uint result) {
+        result = EternalStorage(db).subUIntValue(sha3(countKey), 1);        
     }
 
     function containsValue(address db, uint id, string key, uint8[] array) internal returns(bool) {
