@@ -69,12 +69,14 @@ contract EternalStorage is Owned {
         delete UIntStorage[record];
     }
 
-    function addUIntValue(bytes32 record, uint value) onlyAllowedContractOrOwner {
-        UIntStorage[record] = SafeMath.safeAdd(UIntStorage[record], value);
+    function addUIntValue(bytes32 record, uint value) onlyAllowedContractOrOwner returns (uint result) {
+        result = SafeMath.safeAdd(UIntStorage[record], value);
+        UIntStorage[record] = result;
     }
 
-    function subUIntValue(bytes32 record, uint value) onlyAllowedContractOrOwner {
-        UIntStorage[record] = SafeMath.safeSub(UIntStorage[record], value);
+    function subUIntValue(bytes32 record, uint value) onlyAllowedContractOrOwner returns (uint result) {
+        result =  SafeMath.safeSub(UIntStorage[record], value);
+        UIntStorage[record] = result;
     }
 
     /**
