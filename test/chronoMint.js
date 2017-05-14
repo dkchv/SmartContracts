@@ -261,7 +261,7 @@ contract('ChronoMint', function(accounts) {
       return instance.init(UserStorage.address, ChronoBankAssetProxy.address)
     }).then(function () {
       return timeHolder.addListener(rewards.address)
-    }).then(function () {
+    }).then(function() {
       return contractsManager.setAddress(ChronoBankAssetProxy.address, {from: accounts[0]})
     }).then(function () {
       return contractsManager.setAddress(ChronoBankAssetWithFeeProxy.address, {from: accounts[0]})
@@ -509,7 +509,7 @@ contract('ChronoMint', function(accounts) {
       });
     });
 
-    it("allows to propose pending operation.", function() {
+    it("allows to propose pending operation", function() {
       return userManager.addCBE(owner2, 0x0, {from:owner}).then(function(r) {
         conf_sign = r.logs[0].args.hash;
         shareable.pendingsCount.call({from: owner}).then(function(r) {
@@ -518,7 +518,7 @@ contract('ChronoMint', function(accounts) {
       });
     });
 
-    it("allows to revoke last confirmation and remove pending operation.", function() {
+    it("allows to revoke last confirmation and remove pending operation", function() {
       return shareable.revoke(conf_sign, {from:owner}).then(function() {
         shareable.pendingsCount.call({from: owner}).then(function(r) {
           assert.equal(r,0);
@@ -526,7 +526,7 @@ contract('ChronoMint', function(accounts) {
       });
     });
 
-    it("allows one CBE key to add another CBE key.", function() {
+    it("allows one CBE key to add another CBE key", function() {
       return userManager.addCBE(owner2, 0x0, {from:owner}).then(function(r) {
         return shareable.confirm(r.logs[0].args.hash, {from:owner1}).then(function() {
           return chronoMint.isAuthorized.call(owner2).then(function(r){
@@ -1145,7 +1145,7 @@ contract('ChronoMint', function(accounts) {
       });
     });
 
-    it("should show 1% of transfered to exchange 500000 on rewards contract balance", function () {
+    it("should show 1% of transferred to exchange 500000 on rewards contract balance", function () {
       return lhProxyContract.balanceOf.call(rewards.address).then(function (r) {
         assert.equal(r, 4951);
       });
