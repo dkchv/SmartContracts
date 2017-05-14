@@ -9,6 +9,7 @@ before_install:
 - git config --global user.name "Travis-CI"
 script:
 - testrpc -g 1 > /dev/null &
+- sleep 5
 - cd node_modules/ethereum-bridge
 - mkdir database
 - node bridge.js -H localhost:8545 > /dev/null &
