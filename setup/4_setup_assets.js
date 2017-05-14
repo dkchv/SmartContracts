@@ -216,7 +216,7 @@ module.exports = (callback) => {
       return chronoBankAssetWithFee.setupFee(Rewards.address, 100, {from: accounts[0]})
     }).then(function () {
       return chronoBankPlatform.changeOwnership(SYMBOL2, ContractsManager.address, params)
-    .then(() => {
+    }).then(() => {
       return Exchange.deployed()
     }).then(i => {
       exchange = i
