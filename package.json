@@ -11,6 +11,7 @@
   "license": "GPLv3",
   "dependencies": {
     "@digix/tempo": "^0.2.0",
+    "ethereum-bridge": "oraclize/ethereum-bridge",
     "ethereumjs-testrpc": "3.0.5",
     "ethereumjs-wallet": "0.6.0",
     "standard-version": "^4.0.0",
