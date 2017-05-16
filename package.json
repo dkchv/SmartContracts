@@ -12,6 +12,7 @@
   "dependencies": {
     "@digix/contest": "^0.2.6",
     "@digix/tempo": "^0.2.0",
+    "babel-preset-env": "^1.4.0",
     "ethereum-bridge": "oraclize/ethereum-bridge",
     "ethereumjs-testrpc": "3.0.5",
     "ethereumjs-wallet": "0.6.0",

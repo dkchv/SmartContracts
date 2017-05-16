@@ -1,5 +1,6 @@
-//import Contest from '@digix/contest';
-//const contest = new Contest({ debug: true, timeout: 2000 });
+require("babel-register");
+import Contest from '@digix/contest';
+const contest = new Contest({ debug: true, timeout: 2000 });
 var FakeCoin = artifacts.require("./FakeCoin.sol");
 var ChronoBankPlatform = artifacts.require("./ChronoBankPlatform.sol");
 var ChronoBankPlatformEmitter = artifacts.require("./ChronoBankPlatformEmitter.sol");
