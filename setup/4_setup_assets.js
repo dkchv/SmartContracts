@@ -237,6 +237,8 @@ module.exports = (callback) => {
       rewards = i
       return rewards.init(TimeHolder.address, 0)
     }).then(() => {
+      return rewards.addAsset(chronoBankAssetWithFeeProxy.address)
+    }).then(() => {
       return rewards.changeContractOwnership(contractsManager.address, params)
     }).then(() => {
       return contractsManager.claimContractOwnership(rewards.address, false, params)

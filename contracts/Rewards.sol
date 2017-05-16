@@ -51,6 +51,8 @@ contract Rewards is Owned {
     address public timeHolder;
 
     address[] public assets;
+    mapping(address => uint) assetsId;
+    uint[] deletedIds;
 
 // Minimum period length, in days.
     uint public closeInterval;
@@ -103,6 +105,7 @@ contract Rewards is Owned {
         periods.length++;
         periods[0].shareholdersCount = 1;
         periods[0].startDate = now;
+        assets.push(0);
 
         return true;
     }
@@ -154,7 +157,7 @@ contract Rewards is Owned {
         periods[lastClosedPeriod()].shareholdersCount = TimeHolder(timeHolder).shareholdersCount();
         //periods[lastClosedPeriod()].totalShares = TimeHolder(timeHolder).totalShares();
         if(assets.length != 0) {
-            for(uint i = 0;i<assets.length;i++) {
+            for(uint i = 1;i<assets.length;i++) {
                 registerAsset(Asset(assets[i]));
             }
         }
@@ -191,7 +194,7 @@ contract Rewards is Owned {
         first = _part * maxSharesTransfer + 1;
         for(;first < last;first++) {
             holder = TimeHolder(timeHolder).shareholders(first);
-            for(uint i = 0;i<assets.length;i++) {
+            for(uint i = 1;i<assets.length;i++) {
                 calculateRewardFor(Asset(assets[i]),holder);
             }
         }
@@ -203,8 +206,9 @@ contract Rewards is Owned {
         return false;
     }
 
-    function addAsset(address _asset) returns(bool) {
-        if(_asset != 0x0) {
+    function addAsset(address _asset) onlyContractOwner returns(bool) {
+        if(_asset != 0x0 && assetsId[_asset] == 0) {
+            assetsId[_asset] = assets.length;
             assets.push(_asset);
             return true;
         }
