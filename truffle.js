@@ -1,3 +1,4 @@
+require("babel-register");
 var Wallet = require('ethereumjs-wallet');
 var FixtureSubprovider = require('web3-provider-engine/subproviders/fixture.js')
 var ProviderEngine = require("web3-provider-engine");
@@ -37,6 +38,10 @@ engine.addProvider(new Web3Subprovider(new Web3.providers.HttpProvider(providerU
 engine.start(); // Required by the provider engine.
 
 module.exports = {
+mocha: {
+    useColors: true,
+    compilers: 'js:babel-core/register'
+},
 networks: {
     "main": {
       network_id: 1,

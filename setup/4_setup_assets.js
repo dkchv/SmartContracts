@@ -111,6 +111,11 @@ module.exports = (callback) => {
       contractsManager = i
     })
     .then(() => {
+      return Vote.deployed()
+    }).then((instance) => {
+      vote = instance;
+      return instance.init(TimeHolder.address, UserStorage.address, Shareable.address)
+    }).then(() => {
       return TimeHolder.deployed()
     })
     .then(i => {
