@@ -15,7 +15,9 @@ var ContractsManager = artifacts.require("./ContractsManager.sol");
 var UserManager = artifacts.require("./UserManager.sol");
 var UserStorage = artifacts.require("./UserStorage.sol");
 var Shareable = artifacts.require("./PendingManager.sol");
-var LOC = artifacts.require("./LOC.sol");
+var EternalStorage = artifacts.require("./EternalStorage.sol");
+var LOCLibrary = artifacts.require("./LOCLibrary.sol");
+var LOCManager = artifacts.require("./LOCManager.sol");
 var TimeHolder = artifacts.require("./TimeHolder.sol");
 var RateTracker = artifacts.require("./KrakenPriceTicker.sol");
 var Reverter = require('./helpers/reverter');
@@ -37,6 +39,8 @@ contract('ChronoMint', function(accounts) {
   var conf_sign;
   var conf_sign2;
   var coin;
+  var eternalStorage;
+  var locManager;
   var chronoMint;
   var chronoBankPlatform;
   var chronoBankPlatformEmitter;
@@ -57,6 +61,7 @@ contract('ChronoMint', function(accounts) {
   var loc_contracts = [];
   var labor_hour_token_contracts = [];
   var Status = {maintenance:0,active:1, suspended:2, bankrupt:3};
+  var Setting = {name:0,website:1,controller:2,issueLimit:3,issued:4,redeemed:5,publishedHash:6,expDate:7,timeProxyContract:8,rewardsContract:9,exchangeContract:10,proxyContract:11,securityPercentage:12,liquidityPercentage:13,insurancePercentage:14,insuranceDuration:15,lhProxyContract:16};
   var unix = Math.round(+new Date()/1000);
 
   const SYMBOL = 'TIME';
@@ -78,13 +83,17 @@ contract('ChronoMint', function(accounts) {
     }).then(function (instance) {
       return instance.addOwner(UserManager.address)
     }).then(function () {
+       return EternalStorage.deployed()
+    }).then(function () {
+       return LOCManager.deployed()
+    }).then(function () {
       return ChronoMint.deployed()
-    }).then(function (instance) {
-      return instance.init(UserStorage.address, Shareable.address, ContractsManager.address)
+    }).then(function (instance) {        
+       return instance.init(UserStorage.address, Shareable.address, ContractsManager.address, LOCManager.address)
     }).then(function () {
       return ContractsManager.deployed()
     }).then(function (instance) {
-      return instance.init(UserStorage.address, Shareable.address)
+      return instance.init(UserStorage.address, Shareable.address, LOCManager.address)
     }).then(function () {
       return Shareable.deployed()
     }).then(function (instance) {
@@ -412,47 +421,45 @@ contract('ChronoMint', function(accounts) {
     });
 
     it("allows a CBE to propose an LOC.", function() {
-      return chronoMint.proposeLOC(
-        bytes32("Bob's Hard Workers"),
-        bytes32("www.ru"),
-        1000,
-        bytes32fromBase58("QmTeW79w7QQ6Npa3b1d5tANreCDxF2iDaAPsDvW6KtLmfB"),
-        unix
-      ).then(function(r){
-        loc_contracts[0] = LOC.at(r.logs[0].args._LOC);
-        return loc_contracts[0].status.call().then(function(r){
-          assert.equal(r, Status.maintenance);
+        const name = "Bob's Hard Workers";
+        const website = "www.ru.ru"; 
+        const issueLimit = 1000;
+        const ipfsHash = bytes32fromBase58("QmTeW79w7QQ6Npa3b1d5tANreCDxF2iDaAPsDvW6KtLmfB");
+        const expireDate = unix;
+        
+        return chronoMint.proposeLOC(bytes32(name), bytes32(website), issueLimit, ipfsHash, expireDate)
+        .then(function(r) {
+            loc_contracts[0] = r.logs[0].args.locId.toNumber();
+            return chronoMint.getLOCbyID.call(loc_contracts[0]).then(function(loc){  
+                assert.equal(web3.toUtf8(loc[0]), name);
+                assert.equal(web3.toUtf8(loc[1]), website);
+                assert.equal(loc[2].toNumber(), issueLimit);
+                assert.equal(loc[3], ipfsHash);
+                assert.equal(loc[4].toNumber(), expireDate);
+                assert.equal(loc[5].toNumber(), Status.maintenance);                    
+            });
         });
-      });
     });
 
     it("Proposed LOC should increment LOCs counter", function() {
-      return chronoMint.getLOCCount.call().then(function(r){
-        assert.equal(r, 1);
-      });
+        return chronoMint.getLOCCount.call().then(function(r) {
+            assert.equal(r, 1);
+        });
     });
 
     it("allows CBE member to remove LOC", function() {
-      return chronoMint.removeLOC(loc_contracts[0].address,{
-        from: accounts[0],
-        gas: 3000000
-      }).then(function() {
-        return chronoMint.getLOCCount.call().then(function(r){
-          return chronoMint.deletedIdsLength.call().then(function(r2){
-            assert.equal(r, 0);
-            assert.equal(r2, 0);
-          });
+        return chronoMint.removeLOC(loc_contracts[0], {from: accounts[0], gas: 3000000})
+        .then(function() {
+            return chronoMint.getLOCCount.call().then(function(r) {
+                assert.equal(r, 0);
+            });
         });
-      });
     });
 
     it("Removed LOC should decrement LOCs counter", function() {
-      return chronoMint.getLOCCount.call().then(function(r){
-        return chronoMint.deletedIdsLength.call().then(function(r2){
-          assert.equal(r, 0);
-          assert.equal(r2, 0);
+        return chronoMint.getLOCCount.call().then(function(r) {
+            assert.equal(r, 0);
         });
-      });
     });
 
     it("allow CBE member to set his IPFS orbit-db hash", function() {
@@ -752,50 +759,64 @@ contract('ChronoMint', function(accounts) {
     });
 
     it("allows a CBE to propose an LOC.", function () {
-      return chronoMint.proposeLOC(
-        bytes32("Bob's Hard Workers"),
-        bytes32("www.ru"),
-        1000000,
-        bytes32fromBase58("QmTeW79w7QQ6Npa3b1d5tANreCDxF2iDaAPsDvW6KtLmfB"),
-        unix
-      ).then(function (r) {
-        loc_contracts[0] = LOC.at(r.logs[0].args._LOC);
-        return loc_contracts[0].status.call().then(function (r) {
-          assert.equal(r, Status.maintenance);
+        const name = "Bob's Hard Workers";
+        const website = "http://www.chronobank-awesome.ru"; 
+        const issueLimit = 1000000;
+        const ipfsHash = bytes32fromBase58("QmTeW79w7QQ6Npa3b1d5tANreCDxF2iDaAPsDvW6KtLmfB");
+        const expireDate = unix;
+
+        return chronoMint.proposeLOC(bytes32(name), bytes32(website), issueLimit, ipfsHash, expireDate)
+        .then(function(r) {
+            loc_contracts[0] = r.logs[0].args.locId.toNumber();
+            
+            return chronoMint.getLOCbyID.call(loc_contracts[0]).then(function(loc) {  
+                assert.equal(web3.toUtf8(loc[0]), name);
+                assert.equal(web3.toUtf8(loc[1]), website);
+                assert.equal(loc[2].toNumber(), issueLimit);
+                assert.equal(loc[3], ipfsHash);
+                assert.equal(loc[4].toNumber(), expireDate);
+                assert.equal(loc[5].toNumber(), Status.maintenance);                    
+            });
         });
-      });
     });
 
     it("Proposed LOC should increment LOCs counter", function () {
-      return chronoMint.getLOCCount.call().then(function (r) {
-        assert.equal(r, 1);
-      });
+        return chronoMint.getLOCCount.call().then(function (r) {
+            assert.equal(r, 1);
+        });
     });
 
     it("ChronoMint should be able to return LOCs array with proposed LOC address", function () {
-      return chronoMint.getLOCs.call().then(function (r) {
-        assert.equal(r[1], loc_contracts[0].address);
-      });
+        return chronoMint.getLOCs.call().then(function (r) {
+            assert.equal(r[0], loc_contracts[0]);
+        });
     });
 
+    //  it("LOC status should be changable", function () {
+    //      return chronoMint.setLOCStatus(loc_contracts[0], Status.active, {from: owner}).then(function (r) {
+    //          return chronoMint.getLOCbyID.call(loc_contracts[0]).then(function(loc) {  
+    //             assert.equal(loc[5].toNumber(), Status.active);                    
+    //         });
+    //      });
+    // });
 
     it("allows 5 CBE members to activate an LOC.", function () {
-      return chronoMint.setLOCStatus(loc_contracts[0].address, Status.active, {from: owner}).then(function (r) {
-        conf_sign = r.logs[0].args.hash;
-        return shareable.confirm(conf_sign, {from: owner1}).then(function (r) {
-          return shareable.confirm(conf_sign, {from: owner2}).then(function (r) {
-            return shareable.confirm(conf_sign, {from: owner3}).then(function (r) {
-              return shareable.confirm(conf_sign, {from: owner4}).then(function (r) {
-                return shareable.confirm(conf_sign, {from: owner5}).then(function (r) {
-                  return loc_contracts[0].status.call().then(function (r) {
-                    assert.equal(r, Status.active);
-                  });
+        return chronoMint.setLOCStatus(loc_contracts[0], Status.active, {from: owner}).then(function (r) {
+            conf_sign = r.logs[0].args.hash;
+            return shareable.confirm(conf_sign, {from: owner1}).then(function (r) {
+                return shareable.confirm(conf_sign, {from: owner2}).then(function (r) {
+                    return shareable.confirm(conf_sign, {from: owner3}).then(function (r) {
+                        return shareable.confirm(conf_sign, {from: owner4}).then(function (r) {
+                            return shareable.confirm(conf_sign, {from: owner5}).then(function (r) {
+                                return chronoMint.getLOCbyID.call(loc_contracts[0]).then(function(loc) {  
+                                    assert.equal(loc[5].toNumber(), Status.active);                    
+                                });
+                            });
+                        });
+                    });
                 });
-              });
             });
-          });
         });
-      });
     });
 
     it("pending operation counter should be 0", function () {
@@ -805,17 +826,17 @@ contract('ChronoMint', function(accounts) {
     });
 
     it("collects call to setValue and first vote for a new value ", function () {
-      return chronoMint.setLOCString(loc_contracts[0].address, 12, bytes32(22)).then(function (r) {
-        conf_sign = r.logs[0].args.hash;
-        return loc_contracts[0].getString.call(12).then(function (r) {
-          assert.notEqual(r, bytes32(22));
-          return shareable.confirm(conf_sign, {from: owner1}).then(function () {
-            return loc_contracts[0].getString.call(12).then(function (r) {
-              assert.notEqual(r, bytes32(22));
+        return chronoMint.setLOCString(loc_contracts[0], Setting.name, bytes32(22)).then(function (r) {
+            conf_sign = r.logs[0].args.hash;
+            return chronoMint.getLOCString.call(loc_contracts[0], Setting.name).then(function (r) {
+                assert.notEqual(r, bytes32(22));
+                return shareable.confirm(conf_sign, {from: owner1}).then(function () {
+                    return chronoMint.getLOCString.call(loc_contracts[0], Setting.name).then(function (r) {
+                        assert.notEqual(r, bytes32(22));                        
+                    });
+                });
             });
-          });
         });
-      });
     });
 
     it("check confirmation yet needed should be 4", function () {
@@ -856,41 +877,44 @@ contract('ChronoMint', function(accounts) {
         return shareable.confirm(conf_sign, {from: owner3}).then(function () {
           return shareable.confirm(conf_sign, {from: owner4}).then(function () {
             return shareable.confirm(conf_sign, {from: owner5}).then(function () {
-              return loc_contracts[0].getString.call(12).then(function (r) {
-                assert.equal(r, bytes32(22));
+              return chronoMint.getLOCString.call(loc_contracts[0], Setting.name).then(function (r) {
+                assert.equal(r, bytes32(22));                        
               });
             });
           });
         });
       });
     });
-
-    it("doesn't allow non CBE to change settings for the contract.", function () {
-      return loc_contracts[0].setString(3, 2000).then(function () {
-        return loc_contracts[0].getString.call(3).then(function (r) {
-          assert.equal(r, bytes32(1000000));
-        });
-      });
-    });
+    
+    // TODO: AG FIXME
+    // it("doesn't allow non CBE to change settings for the contract.", function () {
+    //     const dummy_site = "http://dummy.net";
+    //     return chronoMint.setLOCString(loc_contracts[0], Setting.website, bytes32(dummy_site)).then(function () {
+    //         return chronoMint.getLOCString.call(loc_contracts[0], Setting.website).then(function (r) {
+    //             assert.notEqual(r, bytes32(dummy_site));
+    //             assert.equal(r, bytes32("http://www.chronobank-awesome.ru"));
+    //         });
+    //     });
+    // });
 
     it("allows CBE controller to change the name of the LOC", function () {
-      return chronoMint.setLOCString(loc_contracts[0].address, 0, bytes32("David's Hard Workers")).then(function (r) {
-        const conf_sign3 = r.logs[0].args.hash;
-        return shareable.confirm(conf_sign3, {from: owner1}).then(function (r) {
-          return shareable.confirm(conf_sign3, {from: owner2}).then(function (r) {
-            return shareable.confirm(conf_sign3, {from: owner3}).then(function (r) {
-              return shareable.confirm(conf_sign3, {from: owner4}).then(function (r) {
-                return shareable.confirm(conf_sign3, {from: owner5}).then(function (r) {
-
-                  return loc_contracts[0].getName.call().then(function (r) {
-                    assert.equal(r, bytes32("David's Hard Workers"));
-                  });
+        const name = "David's Hard Workers 2";
+        return chronoMint.setLOCString(loc_contracts[0], 0, bytes32(name)).then(function (r) {
+            const conf_sign3 = r.logs[0].args.hash;
+            return shareable.confirm(conf_sign3, {from: owner1}).then(function (r) {
+                return shareable.confirm(conf_sign3, {from: owner2}).then(function (r) {
+                    return shareable.confirm(conf_sign3, {from: owner3}).then(function (r) {
+                        return shareable.confirm(conf_sign3, {from: owner4}).then(function (r) {
+                            return shareable.confirm(conf_sign3, {from: owner5}).then(function (r) {
+                                return chronoMint.getLOCbyID.call(loc_contracts[0]).then(function(loc){                                       
+                                    assert.equal(loc[0], bytes32(name));                    
+                                });
+                            });
+                        });
+                    });
                 });
-              });
             });
-          });
         });
-      });
     });
 
     it("should decrement pending operation counter ", function () {
@@ -1031,19 +1055,19 @@ contract('ChronoMint', function(accounts) {
     });
 
     it("should show LOC issue limit", function () {
-      return loc_contracts[0].getIssueLimit.call().then(function (r) {
+      return chronoMint.getLOCIssueLimit.call(loc_contracts[0]).then(function (r) {
         assert.equal(r, 1000000);
       });
     });
 
     it("should show LOC owner is ChronoMint", function () {
-      return loc_contracts[0].getContractOwner.call().then(function (r) {
-        assert.equal(r, chronoMint.address);
-      });
+        return chronoMint.getLOCbyID.call(loc_contracts[0]).then(function(loc) {
+            assert.equal(loc[6], chronoMint.address);                    
+        });
     });
 
     it("shouldn't be abble to Issue 1100000 LHT for LOC according to issueLimit", function () {
-      return contractsManager.reissueAsset(2, 'LHT', 1100000, loc_contracts[0].address, {
+      return contractsManager.reissueAsset(2, 'LHT', 1100000, loc_contracts[0], {
         from: owner,
         gas: 3000000
       }).then((r) => {
@@ -1064,7 +1088,7 @@ contract('ChronoMint', function(accounts) {
     });
 
     it("should be abble to Issue 1000000 LHT for LOC according to issueLimit", function () {
-      return contractsManager.reissueAsset(2, 'LHT', 1000000, loc_contracts[0].address, {
+      return contractsManager.reissueAsset(2, 'LHT', 1000000, loc_contracts[0], {
         from: owner,
         gas: 3000000
       }).then(function (r) {
@@ -1084,7 +1108,7 @@ contract('ChronoMint', function(accounts) {
     });
 
     it("shouldn't be abble to Issue 1000 LHT for LOC according to issued and issueLimit", function () {
-      return contractsManager.reissueAsset(2, 'LHT', 1000, loc_contracts[0].address, {
+      return contractsManager.reissueAsset(2, 'LHT', 1000, loc_contracts[0], {
         from: owner,
         gas: 3000000
       }).then(function (r) {
@@ -1110,13 +1134,13 @@ contract('ChronoMint', function(accounts) {
     });
 
     it("should show LOC issued 1000000", function () {
-      return loc_contracts[0].getIssued.call().then(function (r) {
+      return chronoMint.getLOCIssued.call(loc_contracts[0]).then(function (r) {
         assert.equal(r, 1000000);
       });
     });
 
     it("should be abble to Revoke 500000 LHT for LOC according to issueLimit", function () {
-      return contractsManager.revokeAsset(2, 'LHT', 500000, loc_contracts[0].address, {
+      return contractsManager.revokeAsset(2, 'LHT', 500000, loc_contracts[0], {
         from: owner,
         gas: 3000000
       }).then(function (r) {
@@ -1136,7 +1160,7 @@ contract('ChronoMint', function(accounts) {
     });
 
     it("should show LOC issued 500000", function () {
-      return loc_contracts[0].getIssued.call().then(function (r) {
+      return chronoMint.getLOCIssued.call(loc_contracts[0]).then(function (r) {
         assert.equal(r, 500000);
       });
     });

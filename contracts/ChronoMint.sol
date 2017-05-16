@@ -1,28 +1,29 @@
 pragma solidity ^0.4.8;
 
-import "./LOC.sol";
 import "./Managed.sol";
+import "./LOCManager.sol";
 
 contract ChronoMint is Managed {
+    address private locManager;
+    address private contractManager;
 
-    uint offeringCompaniesCounter = 1;
-    uint[] deletedIds;
-    address contractManager;
-    mapping(uint => address) offeringCompanies;
-    mapping(address => uint) offeringCompaniesIDs;
-    event newLOC(address _from, address _LOC);
-    event remLOC(address _from, address _LOC);
-    event updLOCStatus(address _from, address _LOC, LOC.Status _status);
-    event updLOCValue(address _from, address _LOC, uint _value, Configurable.Setting _name);
-    event updLOCString(address _from, address _LOC, bytes32 _value, Configurable.Setting _name);
+    event newLOC(address from, uint locId);
+    event remLOC(address from, uint locId);
+    event updLOCStatus(address from, uint locId, Configurable.Status status);
+    event updLOCValue(address from, uint locId, uint value, Configurable.Setting name);
+    event updLOCString(address from, uint locId, bytes32 value, Configurable.Setting name);
 
-    function init(address _userStorage, address _shareable, address _contractManager) returns(bool) {
-        if (userStorage != 0x0) {
-            return false;
-        }
+    function init(address _userStorage, address _shareable, address _contractManager, address _locManager) returns(bool) {
+        if (_userStorage == 0x0) throw;
+        if (_shareable == 0x0) throw;
+        if (_contractManager == 0x0) throw;
+        if (_locManager == 0x0) throw;
+
         userStorage = _userStorage;
         shareable = _shareable;
         contractManager = _contractManager;
+        locManager = _locManager;
+
         return true;
     }
 
@@ -32,82 +33,78 @@ contract ChronoMint is Managed {
         }
     }
 
-    function deletedIdsLength() constant returns (uint) {
-        return deletedIds.length;
-    }
+    function setLOCIssued(uint locId, uint issued) isContractManager returns (bool success) {
+        success = LOCManager(locManager).setIssued(locId, issued);
 
-    function setLOCIssued(address _LOCaddr, uint _issued) isContractManager returns (bool) {
-        updLOCValue(this, _LOCaddr, _issued, Configurable.Setting.issued);
-        return LOC(_LOCaddr).setIssued(_issued);
-    }
-
-    function addLOC (address _locAddr) multisig returns(uint) {
-        return add(_locAddr);
-    }
-
-    function add (address _locAddr) internal returns(uint) {
-        uint id;
-        if(deletedIds.length != 0) {
-            id = deletedIds[deletedIds.length-1];
-            deletedIds.length--;
+        if (success) {
+            updLOCValue(this, locId, issued, Configurable.Setting.issued);
         }
-        else {
-            id = offeringCompaniesCounter;
-            offeringCompaniesCounter++;
+    }
+
+    function getLOCIssued(uint locId ) constant returns (uint issued) {
+        issued = LOCManager(locManager).getIssued(locId);
+    }
+
+    function getLOCIssueLimit(uint locId) constant returns (uint issueLimit) {
+        issueLimit = LOCManager(locManager).getIssueLimit(locId);
+    }
+
+    // function addLOC (uint locId) multisig {
+    //     //TODO: not yet implemented
+
+    //     newLOC(msg.sender, locId);
+    // }
+
+    function removeLOC(uint locId) multisig returns (bool success) {        
+        success = LOCManager(locManager).removeById(locId);
+
+        if (success) {
+            remLOC(msg.sender, locId);
         }
-        offeringCompaniesIDs[_locAddr] = id;
-        offeringCompanies[id] = _locAddr;
-        newLOC(msg.sender, _locAddr);
-        return id;
     }
 
-    function removeLOC(address _locAddr) multisig returns (bool) {
-        if(offeringCompaniesIDs[_locAddr] == offeringCompaniesCounter - 1)
-            offeringCompaniesCounter--;
-        else
-            deletedIds.push(offeringCompaniesIDs[_locAddr]);
-        delete offeringCompanies[offeringCompaniesIDs[_locAddr]];
-        delete offeringCompaniesIDs[_locAddr];
-        remLOC(msg.sender, _locAddr);
-        return true;
+    function proposeLOC(bytes32 name, bytes32 website, uint issueLimit, bytes32 publishedHash, uint expDate) onlyAuthorized() returns(uint locId) {
+        locId = LOCManager(locManager).create(name, website, issueLimit, publishedHash, expDate);
+        newLOC(msg.sender, locId);
     }
 
-    function proposeLOC(bytes32 _name, bytes32 _website, uint _issueLimit, bytes32 _publishedHash, uint _expDate) onlyAuthorized() returns(uint) {
-        address locAddr = new LOC();
-        LOC(locAddr).setLOC(_name,_website,_issueLimit,_publishedHash, _expDate);
-        newLOC(msg.sender, locAddr);
-        return add(locAddr);
-    }
+    function setLOCStatus(uint locId, Configurable.Status status) multisig returns (bool success) {
+        success = LOCManager(locManager).setStatus(locId, status);
 
-    function setLOCStatus(address _LOCaddr, LOC.Status status) multisig {
-        LOC(_LOCaddr).setStatus(status);
-        updLOCStatus(msg.sender, _LOCaddr, status);
-    }
-
-    function setLOCString(address _LOCaddr, LOC.Setting name, bytes32 value) multisig {
-        LOC(_LOCaddr).setString(uint(name),value);
-        updLOCString(msg.sender, _LOCaddr, value, name);
-    }
-
-    function getLOCbyID(uint _id) constant returns(address) {
-        return offeringCompanies[_id];
-    }
-
-    function getLOCs() constant returns(address[] result) {
-        result = new address[](offeringCompaniesCounter);
-        for(uint i=1; i<offeringCompaniesCounter; i++) {
-            result[i]=offeringCompanies[i];
+        if (success) {
+            updLOCStatus(msg.sender, locId, status);
         }
-        return result;
     }
 
-    function getLOCCount () constant returns(uint) {
-        return offeringCompaniesCounter - deletedIds.length - 1;
+    function setLOCString(uint locId, Configurable.Setting name, bytes32 value) multisig returns (bool success) {
+        success = LOCManager(locManager).setString(locId, name, value);
+
+        if (success) {
+            updLOCString(msg.sender, locId, value, name);
+        }
+    }
+     
+     function getLOCString(uint locId, Configurable.Setting name) constant returns (bytes32 value) {
+        value = LOCManager(locManager).getString(locId, name);
     }
 
-    function()
-    {
+    function getLOCbyID(uint locId) constant returns (bytes32 name, bytes32 website, uint issueLimit, bytes32 ipfsHash, uint expireDate, Configurable.Status status, address owner) {
+        return LOCManager(locManager).getInfoById(locId);
+    }
+
+    function getLOCs() constant public returns(uint[] ids) {
+        var count = LOCManager(locManager).getCount();
+        ids = new uint[](count);
+        for (uint i = 0; i < count; i++) {
+            ids[i] = LOCManager(locManager).getIdAt(i);
+        }
+    }
+
+    function getLOCCount () constant returns(uint count) {
+        count = LOCManager(locManager).getCount();
+    }
+
+    function() {
         throw;
     }
 }
-

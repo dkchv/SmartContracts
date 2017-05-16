@@ -75,7 +75,7 @@ contract EternalStorage is Owned {
     }
 
     function subUIntValue(bytes32 record, uint value) onlyAllowedContractOrOwner returns (uint result) {
-        result =  SafeMath.safeSub(UIntStorage[record], value);
+        result = SafeMath.safeSub(UIntStorage[record], value);
         UIntStorage[record] = result;
     }
 

@@ -1,10 +1,7 @@
 pragma solidity ^0.4.8;
 
 import "./Configurable.sol";
-import "./SharedLibrary.sol";
 import "./LOCLibrary.sol";
-import "./EternalStorage.sol";
-import "./Strings.sol";
 
 contract LOCManager is Configurable {    
     using Strings for *;
@@ -29,10 +26,17 @@ function getCount() constant public returns (uint locCount) {
     locCount = LOCLibrary.getCount(eternalStorage);
 }
 
+/** @dev 
+*   TODO: docs
+*/
+function getIdAt(uint index) constant public returns (uint locCount) {
+    locCount = LOCLibrary.getIdAt(eternalStorage, index);
+}
+
 /** @dev
 *   TODO: docs
 */
-function create(bytes32 name, bytes32 website, uint issueLimit, bytes32 ipfsHash, uint expireDate) restricted public returns (uint locId) {
+function create(bytes32  name, bytes32  website, uint  issueLimit, bytes32  ipfsHash, uint  expireDate) restricted external returns (uint locId) {
     if(LOCLibrary.isExistsWithIpfsHash(ipfsHash, eternalStorage)) throw;
     
     LOCLibrary.LOC memory loc = LOCLibrary.createEmpty(eternalStorage);
@@ -42,15 +46,15 @@ function create(bytes32 name, bytes32 website, uint issueLimit, bytes32 ipfsHash
     loc.setIssueLimit(issueLimit);
     loc.setIpfsHash(ipfsHash);
     loc.setExpireDate(expireDate);
+    loc.setStatus(Configurable.Status.maintenance);
 
     if (!loc.save()) throw;
     
-    return loc.id;
+    locId =  loc.id;
 }
 
-
-function setIssued(uint locId, uint issued) restricted public returns  (bool success) {
-    if(!LOCLibrary.isExists(loc.id, eternalStorage)) throw;
+function setIssued(uint locId, uint issued) restricted public returns (bool success) {
+    if(!LOCLibrary.isExists(locId, eternalStorage)) throw;
 
     LOCLibrary.LOC memory loc = getById(locId);
     loc.setIssued(issued);
@@ -58,8 +62,32 @@ function setIssued(uint locId, uint issued) restricted public returns  (bool suc
     success = update(loc);
 }
 
-function setStatus(uint locId, Configurable.Status status) restricted public returns  (bool success) {
-    if(!LOCLibrary.isExists(loc.id, eternalStorage)) throw;
+function getIssued(uint locId) restricted constant public returns (uint issued) {
+    if(!LOCLibrary.isExists(locId, eternalStorage)) throw;
+
+    LOCLibrary.LOC memory loc = getById(locId);
+    issued = loc.getIssued();
+}
+
+function getIssueLimit(uint locId) restricted constant public returns (uint issued) {
+    if(!LOCLibrary.isExists(locId, eternalStorage)) throw;
+
+    LOCLibrary.LOC memory loc = getById(locId);
+    issued = loc.getIssueLimit();
+}
+
+/** @dev 
+*   TODO: docs
+*/
+function getOwner(uint locId) constant public returns (address owner) {
+    if(!LOCLibrary.isExists(locId, eternalStorage)) throw;
+
+    LOCLibrary.LOC memory loc = getById(locId);
+    owner = loc.getOwner();
+}
+
+function setStatus(uint locId, Configurable.Status status) restricted public returns (bool success) {
+    if(!LOCLibrary.isExists(locId, eternalStorage)) throw;
 
     LOCLibrary.LOC memory loc = getById(locId);
     loc.setStatus(status);
@@ -67,13 +95,13 @@ function setStatus(uint locId, Configurable.Status status) restricted public ret
     success = update(loc);
 }
 
-function setString(uint locId, Configurable.Setting name, bytes32 value) restricted public returns  (bool success) {
-    if(!LOCLibrary.isExists(loc.id, eternalStorage)) throw;
+function setString(uint locId, Configurable.Setting name, bytes32 value) restricted public returns (bool success) {
+    if(!LOCLibrary.isExists(locId, eternalStorage)) throw;
 
     LOCLibrary.LOC memory loc = getById(locId);
 
     if (name == Configurable.Setting.name) {
-        loc.setName(value);
+       loc.setName(value);
     } else if (name == Configurable.Setting.website) {
         loc.setWebsite(value);
     } else if (name == Configurable.Setting.publishedHash) {
@@ -83,6 +111,29 @@ function setString(uint locId, Configurable.Setting name, bytes32 value) restric
     }        
 
     success = update(loc);
+}
+
+function getString(uint locId, Configurable.Setting name) restricted public returns (bytes32 value) {
+    if(!LOCLibrary.isExists(locId, eternalStorage)) throw;
+
+    LOCLibrary.LOC memory loc = getById(locId);
+
+    if (name == Configurable.Setting.name) {
+        value = loc.getName();
+    } else if (name == Configurable.Setting.website) {
+        value = loc.getWebsite();
+    } else if (name == Configurable.Setting.publishedHash) {
+        value = loc.getIpfsHash();
+    } else {
+        throw; // unexpected name
+    }        
+}
+
+/** @dev 
+*   TODO: docs
+*/
+function getIds() restricted public constant returns (uint[] ids) {
+    ids = LOCLibrary.getIds(eternalStorage);
 }
 
 /** @dev 
@@ -106,7 +157,7 @@ function removeById(uint locId) restricted public returns (bool success) {
 /** @dev 
 *   TODO: docs
 */
-function getInfoById(uint locId) restricted public returns (bytes32 name, bytes32 website, uint issueLimit, bytes32 ipfsHash, uint expireDate) {
+function getInfoById(uint locId) restricted public constant returns (bytes32 name, bytes32 website, uint issueLimit, bytes32 ipfsHash, uint expireDate, Configurable.Status status) {
     LOCLibrary.LOC memory loc = LOCLibrary.loadById(locId, eternalStorage);
 
     name = loc.name;
@@ -114,12 +165,13 @@ function getInfoById(uint locId) restricted public returns (bytes32 name, bytes3
     issueLimit = loc.issueLimit;
     ipfsHash = loc.ipfsHash;
     expireDate = loc.expireDate;
+    status = loc.status;
 }
 
 /** @dev 
 *   TODO: docs
 */
-function getById(uint locId) restricted internal returns (LOCLibrary.LOC loc) {
+function getById(uint locId) restricted internal constant returns (LOCLibrary.LOC loc) {
     loc = LOCLibrary.loadById(locId, eternalStorage);
 }
 

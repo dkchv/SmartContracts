@@ -9,6 +9,7 @@ import "./LOCInterface.sol";
 import "./ChronoMintInterface.sol";
 import "./FeeInterface.sol";
 import "./ChronoBankAssetProxyInterface.sol";
+import "./LOCManager.sol";
 
 contract ContractsManager is Managed {
     uint public contractsCounter = 1;
@@ -21,16 +22,25 @@ contract ContractsManager is Managed {
     mapping (uint => bytes32) internal contractsHash;
     mapping (uint => bytes32) internal otherContractsHash;
 
+    address private locManager;
+
     event UpdateContract(address contractAddress, uint id);
     event UpdateOtherContract(address contractAddress, uint id);
-    event Reissue(uint value, address locAddr);
+    event Reissue(uint value, uint locId);
 
-    function init(address _userStorage, address _shareable) returns (bool) {
+    function init(address _userStorage, address _shareable, address _locManager) returns (bool) {
         if (userStorage != 0x0) {
             return false;
         }
+
+        if (_userStorage == 0x0) throw;
+        if (_shareable == 0x0) throw;
+        if (_locManager == 0x0) throw;
+
         userStorage = _userStorage;
         shareable = _shareable;
+        locManager = _locManager;
+
         return true;
     }
 
@@ -133,16 +143,16 @@ contract ContractsManager is Managed {
         return true;
     }
 
-    function reissueAsset(uint _id, bytes32 symbol, uint _value, address _locAddr) multisig returns (bool) {
+    function reissueAsset(uint _id, bytes32 symbol, uint _value, uint locId) multisig returns (bool) {
         if(contracts[_id] != 0x0) {
             address platform = ChronoBankAssetProxyInterface(contracts[_id]).chronoBankPlatform();
             if (platform != 0x0 && ChronoBankPlatformInterface(platform).isReissuable(symbol)) {
-                uint issued = LOCInterface(_locAddr).getIssued();
-                if(_value <= LOCInterface(_locAddr).getIssueLimit() - issued) {
+                uint issued = LOCManager(locManager).getIssued(locId);
+                if(_value <= LOCManager(locManager).getIssueLimit(locId) - issued) {
                     if(ChronoBankPlatformInterface(platform).reissueAsset(symbol, _value)) {
-                        address Mint = LOCInterface(_locAddr).getContractOwner();
-                        Reissue(_value, _locAddr);
-                        return ChronoMintInterface(Mint).call(bytes4(sha3("setLOCIssued(address,uint256)")), _locAddr, issued + _value);
+                        address Mint = LOCManager(locManager).getOwner(locId);
+                        Reissue(_value, locId);
+                        return ChronoMintInterface(Mint).call(bytes4(sha3("setLOCIssued(uint256,uint256)")), locId, issued + _value);
                     }
                 }
             }
@@ -150,16 +160,16 @@ contract ContractsManager is Managed {
         return false;
     }
 
-    function revokeAsset(uint _id, bytes32 symbol, uint _value, address _locAddr) multisig returns (bool) {
+    function revokeAsset(uint _id, bytes32 symbol, uint _value, uint locId) multisig returns (bool) {
         if(contracts[_id] != 0x0) {
             address platform = ChronoBankAssetProxyInterface(contracts[_id]).chronoBankPlatform();
             if (platform != 0x0 && ChronoBankPlatformInterface(platform).isReissuable(symbol)) {
-                uint issued = LOCInterface(_locAddr).getIssued();
+                uint issued = LOCManager(locManager).getIssued(locId);
                 if(_value <= issued) {
                     if(ChronoBankPlatformInterface(platform).revokeAsset(symbol, _value)) {
-                        address Mint = LOCInterface(_locAddr).getContractOwner();
-                        Reissue(_value, _locAddr);
-                        return ChronoMintInterface(Mint).call(bytes4(sha3("setLOCIssued(address,uint256)")), _locAddr, issued - _value);
+                        address Mint = LOCManager(locManager).getOwner(locId);
+                        Reissue(_value, locId);
+                        return ChronoMintInterface(Mint).call(bytes4(sha3("setLOCIssued(uint256,uint256)")), locId, issued - _value);
                     }
                 }
             }

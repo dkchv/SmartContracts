@@ -32,14 +32,35 @@ library SharedLibrary {
         return false;
     }
 
-    function getArrayItemsCount(address db, uint id, string countKey) internal returns(uint) {
+    function getArrayItemsCount(address db, uint id, string countKey) internal constant returns (uint) {
         return EternalStorage(db).getUIntValue(sha3(countKey, id));
     }
 
-    function addArrayItem(address db, uint id, string key, string countKey, uint val) internal {
+    function getItemIndex(address db, uint id, string key, string countKey, uint item) internal constant returns (uint) {
+        var items = getUIntArray(db, id, key, countKey);
+        for (uint i = 0; i < items.length ; i++) {
+            if (items[i] == item) {
+                return i;
+            }
+        }
+        return uint(-1);        
+    }
+
+    function getItem(address db, uint id, string key, uint idx) internal constant returns (uint) {
+        return EternalStorage(db).getUIntValue(sha3(key, id, idx));        
+    }
+    
+    function addItem(address db, uint id, string key, string countKey, uint item) internal {
         var idx = getArrayItemsCount(db, id, countKey);
-        EternalStorage(db).setUIntValue(sha3(key, id, idx), val);
+        EternalStorage(db).setUIntValue(sha3(key, id, idx), item);
         EternalStorage(db).setUIntValue(sha3(countKey, id), idx + 1);
+    }
+
+    // TODO: AG
+    function removeItem(address db, uint id, string key, string countKey, uint item) internal {
+        var idx = getItemIndex(db, id, key, countKey, item);
+        EternalStorage(db).deleteUIntValue(sha3(key, id, idx));
+        EternalStorage(db).subUIntValue(sha3(countKey, id), 1);
     }
 
     function setUIntArray(address db, uint id, string key, string countKey, uint[] array) internal{
@@ -50,7 +71,7 @@ library SharedLibrary {
         EternalStorage(db).setUIntValue(sha3(countKey, id), array.length);
     }
     
-    function getUIntArray(address db, uint id, string key, string countKey) internal returns(uint[] result) {
+    function getUIntArray(address db, uint id, string key, string countKey) internal constant returns(uint[] result) {
         uint count = getArrayItemsCount(db, id, countKey);
         result = new uint[](count);
         for (uint i = 0; i < count; i++) {
@@ -65,7 +86,7 @@ library SharedLibrary {
         }
         for (uint i = 0; i < ids.length; i++) {
             if (EternalStorage(db).getUInt8Value(sha3(key, ids[i], val)) == 0) { // never seen before
-                addArrayItem(db, ids[i], keysKey, countKey, val);
+                addItem(db, ids[i], keysKey, countKey, val);
             }
             EternalStorage(db).setUInt8Value(sha3(key, ids[i], val), 1); // 1 == active
         }
@@ -95,5 +116,4 @@ library SharedLibrary {
         }
         return array;
     }
-
 }

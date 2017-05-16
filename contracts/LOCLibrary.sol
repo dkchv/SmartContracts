@@ -13,6 +13,7 @@ library LOCLibrary {
     */
     struct LOC { 
         address eternalStorage;
+        address owner;
         uint id;       
         bytes32 name;
         bytes32 website;
@@ -34,20 +35,17 @@ library LOCLibrary {
         return true;
     }
 
-    /** @dev TODO
+     /** @dev TODO
     * 
     */
-    function setId(LOC self, uint id) internal returns (bool success) {
-        // TODO: check input value
-        self.id = id;
-
-        success = true;
+    function getOwner(LOC self) constant internal returns (address owner) {
+        owner = self.owner;
     } 
 
     /** @dev TODO
     * 
     */
-    function getId(LOC storage self) constant internal returns (uint id) {
+    function getId(LOC self) constant internal returns (uint id) {
         id = self.id;
     } 
 
@@ -120,7 +118,10 @@ library LOCLibrary {
     * 
     */
     function setIssued(LOC self, uint issued) internal returns (bool success) {
-        // TODO: check input value
+        if (issued > self.issueLimit) {
+            return false;
+        }
+
         self.issued = issued;
 
         success = true;
@@ -181,7 +182,7 @@ library LOCLibrary {
     /** @dev TODO: docs
     *   
     */
-    function getCreateDate(LOC self) constant internal returns (uint createDate) {
+    function getCreateDate(LOC self)  internal constant returns (uint createDate) {
         createDate = self.createDate;
     } 
 
@@ -209,7 +210,7 @@ library LOCLibrary {
     /** @dev 
     *   TODO: docs
     */
-    function isExists(uint locId, address eternalStorage) internal constant returns(bool) {
+    function isExists(uint locId, address eternalStorage) internal constant returns (bool) {
         if (locId == 0x0) return false;
 
         return (EternalStorage(eternalStorage).getUIntValue(sha3("loc/id", locId)) != 0x0);
@@ -218,7 +219,7 @@ library LOCLibrary {
     /** @dev
     * TODO: docs
     */
-    function isExistsWithIpfsHash(bytes32 ipfsHash, address eternalStorage) internal constant returns(bool) {
+    function isExistsWithIpfsHash(bytes32 ipfsHash, address eternalStorage) internal constant returns (bool) {
         if (ipfsHash == 0x0) return false;
 
         return (EternalStorage(eternalStorage).getUIntValue(sha3("ipfsHash/locId", ipfsHash)) != 0x0);
@@ -227,23 +228,35 @@ library LOCLibrary {
     /** @dev Return count LOC's which are in storage
     * 
     */
-    function getCount(address eternalStorage) constant returns(uint) {
-        return SharedLibrary.getCount(eternalStorage, "loc/count");
+    function getCount(address eternalStorage) constant returns (uint) {
+        return SharedLibrary.getArrayItemsCount(eternalStorage, 1, "loc/count");
+    }
+
+    function getIdAt(address eternalStorage, uint index) constant returns (uint) {
+        return SharedLibrary.getItem(eternalStorage, 1, "loc/ids", index);
+    }
+
+    /** @dev 
+    *   TODO: docs
+    */
+    function getIds(address eternalStorage) internal constant returns (uint[] ids) {        
+        ids = SharedLibrary.getUIntArray(eternalStorage, 1, "loc/ids", "loc/count"); // TODO: replace '1'
     }
 
     /** 
     * 
     */
-    function getIdByIpfsHash(bytes32 ipfsHash, address eternalStorage) constant returns(uint) {
+    function getIdByIpfsHash(bytes32 ipfsHash, address eternalStorage) internal constant returns (uint) {
         return EternalStorage(eternalStorage).getUIntValue(sha3("ipfsHash/locId", ipfsHash));
     }
 
     /** @dev Creates new empty Loc object. Nothing is stored in Stroage at this stage. 
     *
     */
-    function createEmpty(address eternalStorage) internal returns (LOC loc) {
+    function createEmpty(address eternalStorage) internal constant returns (LOC loc) {
         loc = LOCLibrary.LOC({
                         eternalStorage: eternalStorage,
+                        owner: 0x0,
                         id: 0x0,
                         name: 0x0,
                         website: 0x0,
@@ -261,11 +274,13 @@ library LOCLibrary {
     /** @dev Loads LOC info from Strogage
     *
     */
-    function loadById(uint locId, address eternalStorage) constant internal returns(LOC loc) {   
+    function loadById(uint locId, address eternalStorage) internal constant returns (LOC loc) {   
         if (!isExists(locId, eternalStorage)) throw;
 
         loc.eternalStorage = eternalStorage;
-        loc.setId(locId);    
+        loc.owner = EternalStorage(eternalStorage).getAddressValue(sha3("loc/owner", locId)); 
+        loc.id = locId;    
+        
         loc.setName(EternalStorage(eternalStorage).getBytes32Value(sha3("loc/name", locId)));    
         loc.setWebsite(EternalStorage(eternalStorage).getBytes32Value(sha3("loc/website", locId)));    
         loc.setStatus(Configurable.Status(EternalStorage(eternalStorage).getUInt8Value(sha3("loc/status", locId))));        
@@ -273,7 +288,8 @@ library LOCLibrary {
         loc.setIssueLimit(EternalStorage(eternalStorage).getUIntValue(sha3("loc/issueLimit", locId)));        
         loc.setExpireDate(EternalStorage(eternalStorage).getUIntValue(sha3("loc/expireDate", locId)));
         loc.setCreateDate(EternalStorage(eternalStorage).getUIntValue(sha3("loc/createDate", locId)));
-        loc.setUpdateDate(EternalStorage(eternalStorage).getUIntValue(sha3("loc/updateDate", locId)));    
+        loc.setUpdateDate(EternalStorage(eternalStorage).getUIntValue(sha3("loc/updateDate", locId)));         
+        loc.issued = EternalStorage(eternalStorage).getUIntValue(sha3("loc/issued", locId));
 
         // just to be sure that valid data has been loaded from the storage
         if(!isValid(loc)) throw;
@@ -290,13 +306,19 @@ library LOCLibrary {
         // Do not allow to store invalid or inconsistent data
         if(!isValid(self)) throw; 
 
+        // TODO: AG(11-05-2017) gas cost issue is possible here
+
         uint locId = self.id;    
         if (locId == 0x0) {            
             locId = SharedLibrary.createNext(self.eternalStorage, "loc/next");            
+            self.id = locId;
+            self.owner = msg.sender;
+            EternalStorage(self.eternalStorage).setAddressValue(sha3("loc/owner", locId), self.owner);
             EternalStorage(self.eternalStorage).setUIntValue(sha3("loc/id", locId), locId);
-            EternalStorage(self.eternalStorage).setUIntValue(sha3("loc/createDate", locId), now);            
+            EternalStorage(self.eternalStorage).setUIntValue(sha3("loc/createDate", locId), now);
+            EternalStorage(self.eternalStorage).setUIntValue(sha3("loc/expireDate", locId), self.expireDate);            
 
-            SharedLibrary.increment(self.eternalStorage, "loc/count");
+            SharedLibrary.addItem(self.eternalStorage, 1, "loc/ids", "loc/count", locId);            
         } else {
             EternalStorage(self.eternalStorage).setUIntValue(sha3("loc/updateDate", locId), now);
         }
@@ -306,6 +328,7 @@ library LOCLibrary {
         EternalStorage(self.eternalStorage).setBytes32Value(sha3("loc/ipfsHash", locId), self.ipfsHash);
         EternalStorage(self.eternalStorage).setUInt8Value(sha3("loc/status", locId), uint8(self.status));
         EternalStorage(self.eternalStorage).setUIntValue(sha3("loc/issueLimit", locId), self.issueLimit);
+        EternalStorage(self.eternalStorage).setUIntValue(sha3("loc/issued", locId), self.issued);
 
         EternalStorage(self.eternalStorage).setUIntValue(sha3("ipfsHash/locId", self.ipfsHash), locId);
 
@@ -319,11 +342,13 @@ library LOCLibrary {
          if (!removeById(self.id, self.eternalStorage)) return false;
 
          self.eternalStorage = 0x0;
+         self.owner = 0x0;
          self.id = 0x0;
          self.name = 0x0;
          self.website = 0x0;
          self.status = Configurable.Status.maintenance;
          self.issueLimit = 0x0;
+        self.issued = 0x0;
          self.ipfsHash = 0x0;
          self.expireDate = 0x0;
          self.createDate = 0x0;
@@ -335,21 +360,24 @@ library LOCLibrary {
 
     /**
     * TODO: docs
+    * TODO: AG(11-05-2017) gas cost issue is possible here
     */
     function removeById(uint locId, address eternalStorage) internal returns(bool success) {                        
         bytes32 ipfsHash = EternalStorage(eternalStorage).getBytes32Value(sha3("loc/ipfsHash", locId));
+
+        SharedLibrary.removeItem(eternalStorage, 1, "loc/ids", "loc/count", locId);
         
+        EternalStorage(eternalStorage).deleteAddressValue(sha3("loc/owner", locId));
         EternalStorage(eternalStorage).deleteUIntValue(sha3("ipfsHash/locId", ipfsHash));        
         EternalStorage(eternalStorage).deleteUInt8Value(sha3("loc/status", locId));        
         EternalStorage(eternalStorage).deleteStringValue(sha3("loc/name", locId));
         EternalStorage(eternalStorage).deleteStringValue(sha3("loc/website", locId));
         EternalStorage(eternalStorage).deleteBytes32Value(sha3("loc/ipfsHash", locId));
         EternalStorage(eternalStorage).deleteUIntValue(sha3("loc/issueLimit", locId));                
+        EternalStorage(eternalStorage).deleteUIntValue(sha3("loc/issued", locId));
         EternalStorage(eternalStorage).deleteUIntValue(sha3("loc/expireDate", locId));
         EternalStorage(eternalStorage).deleteUIntValue(sha3("loc/createDate", locId));    
         EternalStorage(eternalStorage).deleteUIntValue(sha3("loc/updateDate", locId));
-
-        SharedLibrary.decrement(eternalStorage, "loc/count");
 
         success = true;
     }
