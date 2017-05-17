@@ -38,10 +38,6 @@ engine.addProvider(new Web3Subprovider(new Web3.providers.HttpProvider(providerU
 engine.start(); // Required by the provider engine.
 
 module.exports = {
-mocha: {
-    useColors: true,
-    compilers: 'js:babel-core/register'
-},
 networks: {
     "main": {
       network_id: 1,
