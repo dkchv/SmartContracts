@@ -1,5 +1,6 @@
 pragma solidity ^0.4.8;
 
+
 /*
  * @title String & slice utility library for Solidity contracts.
  * @author Nick Johnson <arachnid@notdot.net>
@@ -37,39 +38,39 @@ pragma solidity ^0.4.8;
  */
 library Strings {
     struct slice {
-        uint _len;
-        uint _ptr;
+    uint _len;
+    uint _ptr;
     }
 
     function toBytes32Array(string self) internal returns (bytes32[] result) {
-      bytes memory bt = bytes(self);
-      uint slices = bt.length / 32;
-      uint slice = 0;
-      uint bc = 0;
-      bytes memory bs = new bytes(32);
-      result = new bytes32[](slices);
-      for(uint i = 0; i < bt.length; i++) {
-        bs[bc++] = bt[i];
-        if(bc == 31)
-        {
-          bc = 0;
-          result[slice++] = stringToBytes32(string(bs));
+        bytes memory bt = bytes(self);
+        uint slices = bt.length / 32;
+        uint slice = 0;
+        uint bc = 0;
+        bytes memory bs = new bytes(32);
+        result = new bytes32[](slices);
+        for (uint i = 0; i < bt.length; i++) {
+            bs[bc++] = bt[i];
+            if (bc == 31)
+            {
+                bc = 0;
+                result[slice++] = stringToBytes32(string(bs));
+            }
         }
-      }
-      return result;
+        return result;
     }
-  
+
     function stringToBytes32(string memory source) returns (bytes32 result) {
-    assembly {
+        assembly {
         result := mload(add(source, 32))
-    }
+        }
     }
 
     function fromBytes32Array(bytes32[] self) internal returns (string) {
-       bytes memory bytesString = new bytes(self.length * 32);
+        bytes memory bytesString = new bytes(self.length * 32);
         uint urlLength;
-        for (uint i=0; i<self.length; i++) {
-            for (uint j=0; j<32; j++) {
+        for (uint i = 0; i < self.length; i++) {
+            for (uint j = 0; j < 32; j++) {
                 byte char = byte(bytes32(uint(self[i]) * 2 ** (8 * j)));
                 if (char != 0) {
                     bytesString[urlLength] = char;
@@ -78,7 +79,7 @@ library Strings {
             }
         }
         bytes memory bytesStringTrimmed = new bytes(urlLength);
-        for (i=0; i<urlLength; i++) {
+        for (i = 0; i < urlLength; i++) {
             bytesStringTrimmed[i] = bytesString[i];
         }
         return string(bytesStringTrimmed);
@@ -86,9 +87,9 @@ library Strings {
 
     function memcpy(uint dest, uint src, uint len) private {
         // Copy word-length chunks while possible
-        for(; len >= 32; len -= 32) {
+        for (; len >= 32; len -= 32) {
             assembly {
-                mstore(dest, mload(src))
+            mstore(dest, mload(src))
             }
             dest += 32;
             src += 32;
@@ -97,9 +98,9 @@ library Strings {
         // Copy remaining bytes
         uint mask = 256 ** (32 - len) - 1;
         assembly {
-            let srcpart := and(mload(src), not(mask))
-            let destpart := and(mload(dest), mask)
-            mstore(dest, or(destpart, srcpart))
+        let srcpart := and(mload(src), not(mask))
+        let destpart := and(mload(dest), mask)
+        mstore(dest, or(destpart, srcpart))
         }
     }
 
@@ -111,7 +112,7 @@ library Strings {
     function toSlice(string self) internal returns (slice) {
         uint ptr;
         assembly {
-            ptr := add(self, 0x20)
+        ptr := add(self, 0x20)
         }
         return slice(bytes(self).length, ptr);
     }
@@ -124,7 +125,7 @@ library Strings {
     function len(bytes32 self) internal returns (uint) {
         uint ret;
         if (self == 0)
-            return 0;
+        return 0;
         if (self & 0xffffffffffffffffffffffffffffffff == 0) {
             ret += 16;
             self = bytes32(uint(self) / 0x100000000000000000000000000000000);
@@ -157,10 +158,10 @@ library Strings {
     function toSliceB32(bytes32 self) internal returns (slice ret) {
         // Allocate space for `self` in memory, copy it there, and point ret at it
         assembly {
-            let ptr := mload(0x40)
-            mstore(0x40, add(ptr, 0x20))
-            mstore(ptr, self)
-            mstore(add(ret, 0x20), ptr)
+        let ptr := mload(0x40)
+        mstore(0x40, add(ptr, 0x20))
+        mstore(ptr, self)
+        mstore(add(ret, 0x20), ptr)
         }
         ret._len = len(self);
     }
@@ -182,7 +183,7 @@ library Strings {
     function toString(slice self) internal returns (string) {
         var ret = new string(self._len);
         uint retptr;
-        assembly { retptr := add(ret, 32) }
+        assembly {retptr := add(ret, 32)}
 
         memcpy(retptr, self._ptr, self._len);
         return ret;
@@ -202,18 +203,23 @@ library Strings {
         var end = ptr + self._len;
         for (uint len = 0; ptr < end; len++) {
             uint8 b;
-            assembly { b := and(mload(ptr), 0xFF) }
+            assembly {b := and(mload(ptr), 0xFF)}
             if (b < 0x80) {
                 ptr += 1;
-            } else if(b < 0xE0) {
+            }
+            else if (b < 0xE0) {
                 ptr += 2;
-            } else if(b < 0xF0) {
+            }
+            else if (b < 0xF0) {
                 ptr += 3;
-            } else if(b < 0xF8) {
+            }
+            else if (b < 0xF8) {
                 ptr += 4;
-            } else if(b < 0xFC) {
+            }
+            else if (b < 0xFC) {
                 ptr += 5;
-            } else {
+            }
+            else {
                 ptr += 6;
             }
         }
@@ -241,7 +247,7 @@ library Strings {
     function compare(slice self, slice other) internal returns (int) {
         uint shortest = self._len;
         if (other._len < self._len)
-            shortest = other._len;
+        shortest = other._len;
 
         var selfptr = self._ptr;
         var otherptr = other._ptr;
@@ -249,15 +255,15 @@ library Strings {
             uint a;
             uint b;
             assembly {
-                a := mload(selfptr)
-                b := mload(otherptr)
+            a := mload(selfptr)
+            b := mload(otherptr)
             }
             if (a != b) {
                 // Mask out irrelevant bytes and check again
                 uint mask = ~(2 ** (8 * (32 - shortest + idx)) - 1);
                 var diff = (a & mask) - (b & mask);
                 if (diff != 0)
-                    return int(diff);
+                return int(diff);
             }
             selfptr += 32;
             otherptr += 32;
@@ -293,14 +299,17 @@ library Strings {
         uint len;
         uint b;
         // Load the first byte of the rune into the LSBs of b
-        assembly { b := and(mload(sub(mload(add(self, 32)), 31)), 0xFF) }
+        assembly {b := and(mload(sub(mload(add(self, 32)), 31)), 0xFF)}
         if (b < 0x80) {
             len = 1;
-        } else if(b < 0xE0) {
+        }
+        else if (b < 0xE0) {
             len = 2;
-        } else if(b < 0xF0) {
+        }
+        else if (b < 0xF0) {
             len = 3;
-        } else {
+        }
+        else {
             len = 4;
         }
 
@@ -343,18 +352,21 @@ library Strings {
         uint div = 2 ** 248;
 
         // Load the rune into the MSBs of b
-        assembly { word:= mload(mload(add(self, 32))) }
+        assembly {word := mload(mload(add(self, 32)))}
         var b = word / div;
         if (b < 0x80) {
             ret = b;
             len = 1;
-        } else if(b < 0xE0) {
+        }
+        else if (b < 0xE0) {
             ret = b & 0x1F;
             len = 2;
-        } else if(b < 0xF0) {
+        }
+        else if (b < 0xF0) {
             ret = b & 0x0F;
             len = 3;
-        } else {
+        }
+        else {
             ret = b & 0x07;
             len = 4;
         }
@@ -384,7 +396,7 @@ library Strings {
      */
     function keccak(slice self) internal returns (bytes32 ret) {
         assembly {
-            ret := sha3(mload(add(self, 32)), mload(self))
+        ret := sha3(mload(add(self, 32)), mload(self))
         }
     }
 
@@ -405,10 +417,10 @@ library Strings {
 
         bool equal;
         assembly {
-            let len := mload(needle)
-            let selfptr := mload(add(self, 0x20))
-            let needleptr := mload(add(needle, 0x20))
-            equal := eq(sha3(selfptr, len), sha3(needleptr, len))
+        let len := mload(needle)
+        let selfptr := mload(add(self, 0x20))
+        let needleptr := mload(add(needle, 0x20))
+        equal := eq(sha3(selfptr, len), sha3(needleptr, len))
         }
         return equal;
     }
@@ -428,10 +440,10 @@ library Strings {
         bool equal = true;
         if (self._ptr != needle._ptr) {
             assembly {
-                let len := mload(needle)
-                let selfptr := mload(add(self, 0x20))
-                let needleptr := mload(add(needle, 0x20))
-                equal := eq(sha3(selfptr, len), sha3(needleptr, len))
+            let len := mload(needle)
+            let selfptr := mload(add(self, 0x20))
+            let needleptr := mload(add(needle, 0x20))
+            equal := eq(sha3(selfptr, len), sha3(needleptr, len))
             }
         }
 
@@ -462,9 +474,9 @@ library Strings {
 
         bool equal;
         assembly {
-            let len := mload(needle)
-            let needleptr := mload(add(needle, 0x20))
-            equal := eq(sha3(selfptr, len), sha3(needleptr, len))
+        let len := mload(needle)
+        let needleptr := mload(add(needle, 0x20))
+        equal := eq(sha3(selfptr, len), sha3(needleptr, len))
         }
 
         return equal;
@@ -486,9 +498,9 @@ library Strings {
         bool equal = true;
         if (selfptr != needle._ptr) {
             assembly {
-                let len := mload(needle)
-                let needleptr := mload(add(needle, 0x20))
-                equal := eq(sha3(selfptr, len), sha3(needleptr, len))
+            let len := mload(needle)
+            let needleptr := mload(add(needle, 0x20))
+            equal := eq(sha3(selfptr, len), sha3(needleptr, len))
             }
         }
 
@@ -509,246 +521,246 @@ library Strings {
             if (needlelen <= 32) {
                 // Optimized assembly for 68 gas per byte on short strings
                 assembly {
-                    let mask := not(sub(exp(2, mul(8, sub(32, needlelen))), 1))
-                    let needledata := and(mload(needleptr), mask)
-                    let end := add(selfptr, sub(selflen, needlelen))
-                    ptr := selfptr
-                    loop:
-                    jumpi(exit, eq(and(mload(ptr), mask), needledata))
-                    ptr := add(ptr, 1)
-                    jumpi(loop, lt(sub(ptr, 1), end))
-                    ptr := add(selfptr, selflen)
-                    exit:
-                }
-                return ptr;
-            } else {
-                // For long needles, use hashing
-                bytes32 hash;
-                assembly { hash := sha3(needleptr, needlelen) }
-                ptr = selfptr;
-                for (idx = 0; idx <= selflen - needlelen; idx++) {
-                    bytes32 testHash;
-                    assembly { testHash := sha3(ptr, needlelen) }
-                    if (hash == testHash)
-                        return ptr;
-                    ptr += 1;
-                }
-            }
-        }
-        return selfptr + selflen;
-    }
+                let mask := not(sub(exp(2, mul(8, sub(32, needlelen))), 1))
+                let needledata := and(mload(needleptr), mask)
+                let end := add(selfptr, sub(selflen, needlelen))
+                ptr := selfptr
+                loop :
+jumpi(exit, eq(and(mload(ptr), mask), needledata))
+ptr := add(ptr, 1)
+jumpi(loop, lt(sub(ptr, 1), end))
+ptr := add(selfptr, selflen)
+exit :
+}
+return ptr;
+} else {
+// For long needles, use hashing
+bytes32 hash;
+assembly {hash := sha3(needleptr, needlelen)}
+ptr = selfptr;
+for (idx = 0; idx <= selflen - needlelen; idx++) {
+bytes32 testHash;
+assembly {testHash := sha3(ptr, needlelen)}
+if (hash == testHash)
+return ptr;
+ptr += 1;
+}
+}
+}
+return selfptr + selflen;
+}
 
-    // Returns the memory address of the first byte after the last occurrence of
-    // `needle` in `self`, or the address of `self` if not found.
-    function rfindPtr(uint selflen, uint selfptr, uint needlelen, uint needleptr) private returns (uint) {
-        uint ptr;
+// Returns the memory address of the first byte after the last occurrence of
+// `needle` in `self`, or the address of `self` if not found.
+function rfindPtr(uint selflen, uint selfptr, uint needlelen, uint needleptr) private returns (uint) {
+uint ptr;
 
-        if (needlelen <= selflen) {
-            if (needlelen <= 32) {
-                // Optimized assembly for 69 gas per byte on short strings
-                assembly {
-                    let mask := not(sub(exp(2, mul(8, sub(32, needlelen))), 1))
-                    let needledata := and(mload(needleptr), mask)
-                    ptr := add(selfptr, sub(selflen, needlelen))
-                    loop:
-                    jumpi(ret, eq(and(mload(ptr), mask), needledata))
-                    ptr := sub(ptr, 1)
-                    jumpi(loop, gt(add(ptr, 1), selfptr))
-                    ptr := selfptr
-                    jump(exit)
-                    ret:
-                    ptr := add(ptr, needlelen)
-                    exit:
-                }
-                return ptr;
-            } else {
-                // For long needles, use hashing
-                bytes32 hash;
-                assembly { hash := sha3(needleptr, needlelen) }
-                ptr = selfptr + (selflen - needlelen);
-                while (ptr >= selfptr) {
-                    bytes32 testHash;
-                    assembly { testHash := sha3(ptr, needlelen) }
-                    if (hash == testHash)
-                        return ptr + needlelen;
-                    ptr -= 1;
-                }
-            }
-        }
-        return selfptr;
-    }
+if (needlelen <= selflen) {
+if (needlelen <= 32) {
+// Optimized assembly for 69 gas per byte on short strings
+assembly {
+let mask := not(sub(exp(2, mul(8, sub(32, needlelen))), 1))
+let needledata := and(mload(needleptr), mask)
+ptr := add(selfptr, sub(selflen, needlelen))
+loop :
+jumpi(ret, eq(and(mload(ptr), mask), needledata))
+ptr := sub(ptr, 1)
+jumpi(loop, gt(add(ptr, 1), selfptr))
+ptr := selfptr
+jump(exit)
+ret :
+ptr := add(ptr, needlelen)
+exit :
+}
+return ptr;
+} else {
+// For long needles, use hashing
+bytes32 hash;
+assembly {hash := sha3(needleptr, needlelen)}
+ptr = selfptr + (selflen - needlelen);
+while (ptr >= selfptr) {
+bytes32 testHash;
+assembly {testHash := sha3(ptr, needlelen)}
+if (hash == testHash)
+return ptr + needlelen;
+ptr -= 1;
+}
+}
+}
+return selfptr;
+}
 
-    /*
-     * @dev Modifies `self` to contain everything from the first occurrence of
-     *      `needle` to the end of the slice. `self` is set to the empty slice
-     *      if `needle` is not found.
-     * @param self The slice to search and modify.
-     * @param needle The text to search for.
-     * @return `self`.
-     */
-    function find(slice self, slice needle) internal returns (slice) {
-        uint ptr = findPtr(self._len, self._ptr, needle._len, needle._ptr);
-        self._len -= ptr - self._ptr;
-        self._ptr = ptr;
-        return self;
-    }
+/*
+ * @dev Modifies `self` to contain everything from the first occurrence of
+ *      `needle` to the end of the slice. `self` is set to the empty slice
+ *      if `needle` is not found.
+ * @param self The slice to search and modify.
+ * @param needle The text to search for.
+ * @return `self`.
+ */
+function find(slice self, slice needle) internal returns (slice) {
+uint ptr = findPtr(self._len, self._ptr, needle._len, needle._ptr);
+self._len -= ptr - self._ptr;
+self._ptr = ptr;
+return self;
+}
 
-    /*
-     * @dev Modifies `self` to contain the part of the string from the start of
-     *      `self` to the end of the first occurrence of `needle`. If `needle`
-     *      is not found, `self` is set to the empty slice.
-     * @param self The slice to search and modify.
-     * @param needle The text to search for.
-     * @return `self`.
-     */
-    function rfind(slice self, slice needle) internal returns (slice) {
-        uint ptr = rfindPtr(self._len, self._ptr, needle._len, needle._ptr);
-        self._len = ptr - self._ptr;
-        return self;
-    }
+/*
+ * @dev Modifies `self` to contain the part of the string from the start of
+ *      `self` to the end of the first occurrence of `needle`. If `needle`
+ *      is not found, `self` is set to the empty slice.
+ * @param self The slice to search and modify.
+ * @param needle The text to search for.
+ * @return `self`.
+ */
+function rfind(slice self, slice needle) internal returns (slice) {
+uint ptr = rfindPtr(self._len, self._ptr, needle._len, needle._ptr);
+self._len = ptr - self._ptr;
+return self;
+}
 
-    /*
-     * @dev Splits the slice, setting `self` to everything after the first
-     *      occurrence of `needle`, and `token` to everything before it. If
-     *      `needle` does not occur in `self`, `self` is set to the empty slice,
-     *      and `token` is set to the entirety of `self`.
-     * @param self The slice to split.
-     * @param needle The text to search for in `self`.
-     * @param token An output parameter to which the first token is written.
-     * @return `token`.
-     */
-    function split(slice self, slice needle, slice token) internal returns (slice) {
-        uint ptr = findPtr(self._len, self._ptr, needle._len, needle._ptr);
-        token._ptr = self._ptr;
-        token._len = ptr - self._ptr;
-        if (ptr == self._ptr + self._len) {
-            // Not found
-            self._len = 0;
-        } else {
-            self._len -= token._len + needle._len;
-            self._ptr = ptr + needle._len;
-        }
-        return token;
-    }
+/*
+ * @dev Splits the slice, setting `self` to everything after the first
+ *      occurrence of `needle`, and `token` to everything before it. If
+ *      `needle` does not occur in `self`, `self` is set to the empty slice,
+ *      and `token` is set to the entirety of `self`.
+ * @param self The slice to split.
+ * @param needle The text to search for in `self`.
+ * @param token An output parameter to which the first token is written.
+ * @return `token`.
+ */
+function split(slice self, slice needle, slice token) internal returns (slice) {
+uint ptr = findPtr(self._len, self._ptr, needle._len, needle._ptr);
+token._ptr = self._ptr;
+token._len = ptr - self._ptr;
+if (ptr == self._ptr + self._len) {
+// Not found
+self._len = 0;
+} else {
+self._len -= token._len + needle._len;
+self._ptr = ptr + needle._len;
+}
+return token;
+}
 
-    /*
-     * @dev Splits the slice, setting `self` to everything after the first
-     *      occurrence of `needle`, and returning everything before it. If
-     *      `needle` does not occur in `self`, `self` is set to the empty slice,
-     *      and the entirety of `self` is returned.
-     * @param self The slice to split.
-     * @param needle The text to search for in `self`.
-     * @return The part of `self` up to the first occurrence of `delim`.
-     */
-    function split(slice self, slice needle) internal returns (slice token) {
-        split(self, needle, token);
-    }
+/*
+ * @dev Splits the slice, setting `self` to everything after the first
+ *      occurrence of `needle`, and returning everything before it. If
+ *      `needle` does not occur in `self`, `self` is set to the empty slice,
+ *      and the entirety of `self` is returned.
+ * @param self The slice to split.
+ * @param needle The text to search for in `self`.
+ * @return The part of `self` up to the first occurrence of `delim`.
+ */
+function split(slice self, slice needle) internal returns (slice token) {
+split(self, needle, token);
+}
 
-    /*
-     * @dev Splits the slice, setting `self` to everything before the last
-     *      occurrence of `needle`, and `token` to everything after it. If
-     *      `needle` does not occur in `self`, `self` is set to the empty slice,
-     *      and `token` is set to the entirety of `self`.
-     * @param self The slice to split.
-     * @param needle The text to search for in `self`.
-     * @param token An output parameter to which the first token is written.
-     * @return `token`.
-     */
-    function rsplit(slice self, slice needle, slice token) internal returns (slice) {
-        uint ptr = rfindPtr(self._len, self._ptr, needle._len, needle._ptr);
-        token._ptr = ptr;
-        token._len = self._len - (ptr - self._ptr);
-        if (ptr == self._ptr) {
-            // Not found
-            self._len = 0;
-        } else {
-            self._len -= token._len + needle._len;
-        }
-        return token;
-    }
+/*
+ * @dev Splits the slice, setting `self` to everything before the last
+ *      occurrence of `needle`, and `token` to everything after it. If
+ *      `needle` does not occur in `self`, `self` is set to the empty slice,
+ *      and `token` is set to the entirety of `self`.
+ * @param self The slice to split.
+ * @param needle The text to search for in `self`.
+ * @param token An output parameter to which the first token is written.
+ * @return `token`.
+ */
+function rsplit(slice self, slice needle, slice token) internal returns (slice) {
+uint ptr = rfindPtr(self._len, self._ptr, needle._len, needle._ptr);
+token._ptr = ptr;
+token._len = self._len - (ptr - self._ptr);
+if (ptr == self._ptr) {
+// Not found
+self._len = 0;
+} else {
+self._len -= token._len + needle._len;
+}
+return token;
+}
 
-    /*
-     * @dev Splits the slice, setting `self` to everything before the last
-     *      occurrence of `needle`, and returning everything after it. If
-     *      `needle` does not occur in `self`, `self` is set to the empty slice,
-     *      and the entirety of `self` is returned.
-     * @param self The slice to split.
-     * @param needle The text to search for in `self`.
-     * @return The part of `self` after the last occurrence of `delim`.
-     */
-    function rsplit(slice self, slice needle) internal returns (slice token) {
-        rsplit(self, needle, token);
-    }
+/*
+ * @dev Splits the slice, setting `self` to everything before the last
+ *      occurrence of `needle`, and returning everything after it. If
+ *      `needle` does not occur in `self`, `self` is set to the empty slice,
+ *      and the entirety of `self` is returned.
+ * @param self The slice to split.
+ * @param needle The text to search for in `self`.
+ * @return The part of `self` after the last occurrence of `delim`.
+ */
+function rsplit(slice self, slice needle) internal returns (slice token) {
+rsplit(self, needle, token);
+}
 
-    /*
-     * @dev Counts the number of nonoverlapping occurrences of `needle` in `self`.
-     * @param self The slice to search.
-     * @param needle The text to search for in `self`.
-     * @return The number of occurrences of `needle` found in `self`.
-     */
-    function count(slice self, slice needle) internal returns (uint count) {
-        uint ptr = findPtr(self._len, self._ptr, needle._len, needle._ptr) + needle._len;
-        while (ptr <= self._ptr + self._len) {
-            count++;
-            ptr = findPtr(self._len - (ptr - self._ptr), ptr, needle._len, needle._ptr) + needle._len;
-        }
-    }
+/*
+ * @dev Counts the number of nonoverlapping occurrences of `needle` in `self`.
+ * @param self The slice to search.
+ * @param needle The text to search for in `self`.
+ * @return The number of occurrences of `needle` found in `self`.
+ */
+function count(slice self, slice needle) internal returns (uint count) {
+uint ptr = findPtr(self._len, self._ptr, needle._len, needle._ptr) + needle._len;
+while (ptr <= self._ptr + self._len) {
+count++;
+ptr = findPtr(self._len - (ptr - self._ptr), ptr, needle._len, needle._ptr) + needle._len;
+}
+}
 
-    /*
-     * @dev Returns True if `self` contains `needle`.
-     * @param self The slice to search.
-     * @param needle The text to search for in `self`.
-     * @return True if `needle` is found in `self`, false otherwise.
-     */
-    function contains(slice self, slice needle) internal returns (bool) {
-        return rfindPtr(self._len, self._ptr, needle._len, needle._ptr) != self._ptr;
-    }
+/*
+ * @dev Returns True if `self` contains `needle`.
+ * @param self The slice to search.
+ * @param needle The text to search for in `self`.
+ * @return True if `needle` is found in `self`, false otherwise.
+ */
+function contains(slice self, slice needle) internal returns (bool) {
+return rfindPtr(self._len, self._ptr, needle._len, needle._ptr) != self._ptr;
+}
 
-    /*
-     * @dev Returns a newly allocated string containing the concatenation of
-     *      `self` and `other`.
-     * @param self The first slice to concatenate.
-     * @param other The second slice to concatenate.
-     * @return The concatenation of the two strings.
-     */
-    function concat(slice self, slice other) internal returns (string) {
-        var ret = new string(self._len + other._len);
-        uint retptr;
-        assembly { retptr := add(ret, 32) }
-        memcpy(retptr, self._ptr, self._len);
-        memcpy(retptr + self._len, other._ptr, other._len);
-        return ret;
-    }
+/*
+ * @dev Returns a newly allocated string containing the concatenation of
+ *      `self` and `other`.
+ * @param self The first slice to concatenate.
+ * @param other The second slice to concatenate.
+ * @return The concatenation of the two strings.
+ */
+function concat(slice self, slice other) internal returns (string) {
+var ret = new string(self._len + other._len);
+uint retptr;
+assembly {retptr := add(ret, 32)}
+memcpy(retptr, self._ptr, self._len);
+memcpy(retptr + self._len, other._ptr, other._len);
+return ret;
+}
 
-    /*
-     * @dev Joins an array of slices, using `self` as a delimiter, returning a
-     *      newly allocated string.
-     * @param self The delimiter to use.
-     * @param parts A list of slices to join.
-     * @return A newly allocated string containing all the slices in `parts`,
-     *         joined with `self`.
-     */
-    function join(slice self, slice[] parts) internal returns (string) {
-        if (parts.length == 0)
-            return "";
+/*
+ * @dev Joins an array of slices, using `self` as a delimiter, returning a
+ *      newly allocated string.
+ * @param self The delimiter to use.
+ * @param parts A list of slices to join.
+ * @return A newly allocated string containing all the slices in `parts`,
+ *         joined with `self`.
+ */
+function join(slice self, slice[] parts) internal returns (string) {
+if (parts.length == 0)
+return "";
 
-        uint len = self._len * (parts.length - 1);
-        for(uint i = 0; i < parts.length; i++)
-            len += parts[i]._len;
+uint len = self._len * (parts.length - 1);
+for (uint i = 0; i < parts.length; i++)
+len += parts[i]._len;
 
-        var ret = new string(len);
-        uint retptr;
-        assembly { retptr := add(ret, 32) }
+var ret = new string(len);
+uint retptr;
+assembly {retptr := add(ret, 32)}
 
-        for(i = 0; i < parts.length; i++) {
-            memcpy(retptr, parts[i]._ptr, parts[i]._len);
-            retptr += parts[i]._len;
-            if (i < parts.length - 1) {
-                memcpy(retptr, self._ptr, self._len);
-                retptr += self._len;
-            }
-        }
+for (i = 0; i < parts.length; i++) {
+memcpy(retptr, parts[i]._ptr, parts[i]._len);
+retptr += parts[i]._len;
+if (i < parts.length - 1) {
+memcpy(retptr, self._ptr, self._len);
+retptr += self._len;
+}
+}
 
-        return ret;
-    }
+return ret;
+}
 }

@@ -4,21 +4,24 @@ import "./SafeMath.sol";
 import "./Owned.sol";
 import "./Strings.sol";
 
-contract EternalStorage is Owned {    
+contract EternalStorage is Owned {
     using Strings for *;
 
-    mapping(bytes32 => uint) UIntStorage;
-    mapping(bytes32 => uint8) UInt8Storage;
-    mapping(bytes32 => int) IntStorage;    
-    mapping(bytes32 => bytes) BytesStorage;
-    mapping(bytes32 => bytes32) Bytes32Storage;
-    mapping(bytes32 => bool) BooleanStorage;
-    mapping(bytes32 => bytes32[]) StringStorage;
-    mapping(bytes32 => address) AddressStorage;
+    mapping (bytes32 => uint) UIntStorage;
+    mapping (bytes32 => uint8) UInt8Storage;
+    mapping (bytes32 => int) IntStorage;
+    mapping (bytes32 => bytes) BytesStorage;
+    mapping (bytes32 => bytes32) Bytes32Storage;
+    mapping (bytes32 => bool) BooleanStorage;
+    mapping (bytes32 => bytes32[]) StringStorage;
+    mapping (bytes32 => address) AddressStorage;
     
     address[] private allowedContractsKeys;
-    mapping(address => bool) private allowedContracts;
+    mapping (address => bool) private allowedContracts;
 
+    /** @dev TODO
+    *  
+    */
     function addAllowedContracts(address[] addresses) onlyContractOwner {
         for (uint i = 0; i < addresses.length; i++) {
             allowedContracts[addresses[i]] = true;
@@ -26,13 +29,19 @@ contract EternalStorage is Owned {
         }
     }
 
+    /** @dev TODO
+    *  
+    */
     function removeAllowedContracts(address[] addresses) onlyContractOwner {
         for (uint i = 0; i < addresses.length; i++) {
             allowedContracts[addresses[i]] = false;
         }
     }
 
-    function allowedContractsCount() constant returns(uint count) {
+    /** @dev TODO
+    *  
+    */
+    function allowedContractsCount() constant returns (uint count) {
         for (uint i = 0; i < allowedContractsKeys.length; i++) {
             if (allowedContracts[allowedContractsKeys[i]]) {
                 count++;
@@ -41,7 +50,10 @@ contract EternalStorage is Owned {
         return count;
     }
 
-    function getAllowedContracts() constant returns(address[] addresses) {
+    /** @dev TODO
+    *  
+    */
+    function getAllowedContracts() constant returns (address[] addresses) {
         addresses = new address[](allowedContractsCount());
 
         for (uint i = 0; i < allowedContractsKeys.length; i++) {
@@ -53,8 +65,8 @@ contract EternalStorage is Owned {
         return addresses;
     }
 
-    /**
-    *  @dev UInt Storage
+    /*
+    *  UInt Storage
     */
 
     function getUIntValue(bytes32 record) constant returns (uint) {
@@ -70,19 +82,19 @@ contract EternalStorage is Owned {
     }
 
     function addUIntValue(bytes32 record, uint value) onlyAllowedContractOrOwner returns (uint result) {
-        result = SafeMath.safeAdd(UIntStorage[record], value);
+        result = SafeMath.add(UIntStorage[record], value);
         UIntStorage[record] = result;
     }
 
     function subUIntValue(bytes32 record, uint value) onlyAllowedContractOrOwner returns (uint result) {
-        result = SafeMath.safeSub(UIntStorage[record], value);
+        result = SafeMath.sub(UIntStorage[record], value);
         UIntStorage[record] = result;
     }
 
-    /**
-    *  @dev UInt8 Storage
+    /*
+    *  UInt8 Storage
     */
-    
+
     function getUInt8Value(bytes32 record) constant returns (uint8) {
         return UInt8Storage[record];
     }
@@ -95,12 +107,12 @@ contract EternalStorage is Owned {
         delete UInt8Storage[record];
     }
 
-    /**
-    *  @dev String Storage 
+    /*
+    *  String Storage 
     */
 
     function getStringValue(bytes32 record) constant returns (bytes32[] name) {
-        name =  StringStorage[record];
+        name = StringStorage[record];
         return name;
     }
 
@@ -112,8 +124,8 @@ contract EternalStorage is Owned {
         delete StringStorage[record];
     }
 
-    /**
-    *  @dev Address Storage 
+    /*
+    *  Address Storage 
     */
 
     function getAddressValue(bytes32 record) constant returns (address) {
@@ -126,26 +138,26 @@ contract EternalStorage is Owned {
 
     function deleteAddressValue(bytes32 record) onlyAllowedContractOrOwner {
         delete AddressStorage[record];
-    }    
+    }
 
-    /**
-    *  @dev Bytes Storage 
+    /*
+    *  Bytes Storage 
     */
 
     function getBytesValue(bytes32 record) constant returns (bytes) {
         return BytesStorage[record];
     }
 
-    function setBytesValue(bytes32 record, bytes value) onlyAllowedContractOrOwner{
+    function setBytesValue(bytes32 record, bytes value) onlyAllowedContractOrOwner {
         BytesStorage[record] = value;
     }
 
-    function deteleBytesValue(bytes32 record) onlyAllowedContractOrOwner{
+    function deteleBytesValue(bytes32 record) onlyAllowedContractOrOwner {
         delete BytesStorage[record];
     }
 
-    /**
-    *  @dev Bytes32 Storage 
+    /*
+    *  Bytes32 Storage 
     */
 
     function getBytes32Value(bytes32 record) constant returns (bytes32) {
@@ -160,10 +172,10 @@ contract EternalStorage is Owned {
         delete Bytes32Storage[record];
     }
 
-    /**
-    *  @dev Boolean Storage 
+    /*
+    *  Boolean Storage 
     */
-    
+
     function getBooleanValue(bytes32 record) constant returns (bool){
         return BooleanStorage[record];
     }
@@ -171,13 +183,13 @@ contract EternalStorage is Owned {
     function setBooleanValue(bytes32 record, bool value) onlyAllowedContractOrOwner {
         BooleanStorage[record] = value;
     }
-    
+
     function deleteBooleanValue(bytes32 record) onlyAllowedContractOrOwner {
         delete BooleanStorage[record];
     }
 
-    /**
-    *  @dev Int Storage 
+    /*
+    *  Int Storage 
     */
 
     function getIntValue(bytes32 record) constant returns (int){
@@ -192,13 +204,13 @@ contract EternalStorage is Owned {
         delete IntStorage[record];
     }
 
-    /**
-    *  @dev 
+    /** @dev TODO
+    *  
     */
-    modifier onlyAllowedContractOrOwner {    
+    modifier onlyAllowedContractOrOwner {
         //  if (allowedContracts[msg.sender] != true && msg.sender != contractOwner) {
         //      throw;  
         //  }         
-        _;    
+        _;
     }
 }
