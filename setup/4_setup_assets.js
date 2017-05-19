@@ -230,8 +230,9 @@ module.exports = (callback) => {
       return exchange.changeContractOwnership(contractsManager.address, params)
     }).then(() => {
       return contractsManager.claimContractOwnership(exchange.address, false, params)
-    })
-    .then(() => {
+    }).then(() => {
+      return contractsManager.forward(1, exchange.contract.setPrices.getData(1, 2))
+    }).then(() => {
       return Rewards.deployed()
     }).then(i => {
       rewards = i
