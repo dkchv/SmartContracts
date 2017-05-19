@@ -5,10 +5,10 @@ node_js: 7
 before_install:
 - npm install
 - export PATH=$PATH:$(pwd)/node_modules/.bin
-- mv truffle.js.orig truffle.js
 - git config --global user.email "mike@chronobank.com"
 - git config --global user.name "Travis-CI"
 script:
+- mv truffle.js.orig truffle.js
 - testrpc -g 1 > /dev/null &
 - sleep 5
 - cd node_modules/ethereum-bridge
