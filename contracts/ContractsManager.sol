@@ -26,7 +26,6 @@ contract ContractsManager is Managed {
     event UpdateContract(address contractAddress, uint id);
     event UpdateOtherContract(address contractAddress, uint id);
     event Reissue(uint value, address locAddr);
-    event Test(uint value);
 
     function init(address _userStorage, address _shareable) returns (bool) {
         if (userStorage != 0x0) {
@@ -39,6 +38,10 @@ contract ContractsManager is Managed {
 
     function getContractsCounter() constant returns(uint) {
         return contractsCounter - deletedIds.length - 1;
+    }
+
+    function getOtherCounter() constant returns(uint) {
+        return otherContractsCounter - deletedOtherIds.length - 1;
     }
 
     // this method is implemented only for test purposes
@@ -105,6 +108,7 @@ contract ContractsManager is Managed {
     function getOtherContracts() constant returns (address[] result) {
         result = new address[](otherContractsCounter - 1);
         for (uint i = 0; i < otherContractsCounter - 1; i++) {
+            if(otherContracts[i + 1] != 0x0)
             result[i] = otherContracts[i + 1];
         }
         return result;
@@ -215,7 +219,6 @@ contract ContractsManager is Managed {
             contracts[id] = value;
             contractsId[value] = id;
             UpdateContract(value, contractsId[value]);
-            Test(contractsCounter);
             return id;
         }
         return contractsId[value];
@@ -270,7 +273,6 @@ contract ContractsManager is Managed {
             otherContracts[id] = value;
             otherContractsId[value] = id;
             UpdateOtherContract(value, otherContractsId[value]);
-            Test(otherContractsCounter);
             return id;
         }
         return otherContractsId[value];
@@ -293,11 +295,11 @@ contract ContractsManager is Managed {
                 otherContractsCounter--;
             }
             else {
-                deletedIds.push(otherContractsId[value]);
+                deletedOtherIds.push(otherContractsId[value]);
             }
             delete otherContracts[otherContractsId[value]];
             delete otherContractsId[value];
-            UpdateContract(value, otherContractsId[value]);
+            UpdateOtherContract(value, otherContractsId[value]);
             return true;
         }
         return false;
