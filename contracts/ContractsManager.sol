@@ -243,9 +243,9 @@ contract ContractsManager is Managed {
             else {
                 deletedIds.push(contractsId[value]);
             }
+            UpdateContract(value, contractsId[value]);
             delete contracts[contractsId[value]];
             delete contractsId[value];
-            UpdateContract(value, contractsId[value]);
             return true;
         }
         return false;
@@ -297,9 +297,9 @@ contract ContractsManager is Managed {
             else {
                 deletedOtherIds.push(otherContractsId[value]);
             }
+            UpdateOtherContract(value, otherContractsId[value]);
             delete otherContracts[otherContractsId[value]];
             delete otherContractsId[value];
-            UpdateOtherContract(value, otherContractsId[value]);
             return true;
         }
         return false;
