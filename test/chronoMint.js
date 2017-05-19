@@ -1,6 +1,7 @@
 import Contest from '@digix/contest';
 const contest = new Contest({ debug: true, timeout: 2000 });
 var FakeCoin = artifacts.require("./FakeCoin.sol");
+var FakeCoin2 = artifacts.require("./FakeCoin2.sol");
 var ChronoBankPlatform = artifacts.require("./ChronoBankPlatform.sol");
 var ChronoBankPlatformEmitter = artifacts.require("./ChronoBankPlatformEmitter.sol");
 var EventsHistory = artifacts.require("./EventsHistory.sol");
@@ -37,6 +38,7 @@ contract('ChronoMint', function(accounts) {
   var conf_sign;
   var conf_sign2;
   var coin;
+  var coin2;
   var chronoMint;
   var chronoBankPlatform;
   var chronoBankPlatformEmitter;
@@ -74,6 +76,9 @@ contract('ChronoMint', function(accounts) {
   before('setup', function(done) {
     FakeCoin.deployed().then(function(instance) {
       coin = instance;
+      return FakeCoin2.deployed()
+    }).then(function(instance) {
+      coin2 = instance;
       return UserStorage.deployed()
     }).then(function (instance) {
       return instance.addOwner(UserManager.address)
@@ -369,9 +374,67 @@ contract('ChronoMint', function(accounts) {
     it("allows a CBE key to set the contract address", function() {
       return contractsManager.setAddress(coin.address).then(function(r) {
         return contractsManager.getAddress.call(3).then(function(r){
-          return contractsManager.contractsCounter.call().then(function(r2) {
+          return contractsManager.getContractsCounter.call().then(function(r2) {
             assert.equal(r, coin.address);
+            assert.equal(r2,3);
+          });
+        });
+      });
+    });
+
+    it("allows a CBE key to set the contract address", function() {
+      return contractsManager.setAddress(coin2.address).then(function(r) {
+        return contractsManager.getAddress.call(4).then(function(r){
+          return contractsManager.getContractsCounter.call().then(function(r2) {
+            assert.equal(r, coin2.address);
             assert.equal(r2,4);
+          });
+        });
+      });
+    });
+
+    it("allows a CBE key to remove the contract address", function() {
+      return contractsManager.removeAddress(coin.address).then(function(r) {
+        return contractsManager.getAddress.call(3).then(function(r){
+          return contractsManager.getContractsCounter.call().then(function(r2) {
+            assert.notEqual(r, coin.address);
+            assert.equal(r2,3);
+          });
+        });
+      });
+    });
+
+    it("allows a CBE key to set the contract address", function() {
+      return contractsManager.setAddress(coin.address).then(function(r) {
+        return contractsManager.getAddress.call(4).then(function(r){
+	 return contractsManager.getAddress.call(3).then(function(r3){
+          return contractsManager.getContractsCounter.call().then(function(r2) {
+            assert.equal(r, coin2.address);
+	    assert.equal(r3, coin.address);
+            assert.equal(r2,4);
+          });
+        });
+      });
+     });
+    });
+
+    it("allows a CBE key to remove the contract address", function() {
+      return contractsManager.removeAddress(coin2.address).then(function(r) {
+        return contractsManager.getAddress.call(4).then(function(r){
+          return contractsManager.getContractsCounter.call().then(function(r2) {
+            assert.notEqual(r, coin2.address);
+            assert.equal(r2,3);
+          });
+        });
+      });
+    });
+
+    it("allows a CBE key to change the contract address", function() {
+      return contractsManager.changeAddress(coin2.address, coin.address).then(function(r) {
+        return contractsManager.getAddress.call(3).then(function(r){
+          return contractsManager.getContractsCounter.call().then(function(r2) {
+            assert.equal(r, coin.address);
+            assert.equal(r2,3);
           });
         });
       });
@@ -386,9 +449,9 @@ contract('ChronoMint', function(accounts) {
     it("dont't allow a non CBE key to set the contract address", function() {
       return contractsManager.setAddress(coin.address, {from: nonOwner}).then(function(r) {
         return contractsManager.getAddress.call(4).then(function(){
-          return contractsManager.contractsCounter.call().then(function(r2) {
+          return contractsManager.getContractsCounter.call().then(function(r2) {
             assert.notEqual(r, coin.address);
-            assert.notEqual(r2,5);
+            assert.notEqual(r2,4);
           });
         });
       });
@@ -397,9 +460,9 @@ contract('ChronoMint', function(accounts) {
     it("allows a CBE key to remove the contract address", function() {
       return contractsManager.removeAddress(coin.address).then(function(r) {
         return contractsManager.getAddress.call(3).then(function(r){
-          return contractsManager.contractsCounter.call().then(function(r2) {
+          return contractsManager.getContractsCounter.call().then(function(r2) {
             assert.notEqual(r, coin.address);
-            assert.equal(r2,3);
+            assert.equal(r2,2);
           });
         });
       });

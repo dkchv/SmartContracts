@@ -20,11 +20,14 @@ contract Exchange is Owned {
     // Assigned ERC20 token.
     Asset public asset;
 
+    //Switch for turn on and off the exchange operations
+    bool public isActive;
+
     // Price in wei at which exchange buys tokens.
-    uint public buyPrice = 1;
+    uint public buyPrice;
 
     // Price in wei at which exchange sells tokens.
-    uint public sellPrice = 2;
+    uint public sellPrice;
 
     // User sold tokens and received wei.
     event Sell(address indexed who, uint token, uint eth);
@@ -51,6 +54,7 @@ contract Exchange is Owned {
         asset = _asset;
         return true;
     }
+
 
     /**
      * Set exchange operation prices.

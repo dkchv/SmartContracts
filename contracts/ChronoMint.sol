@@ -63,9 +63,9 @@ contract ChronoMint is Managed {
 
     function removeLOC(address _locAddr) multisig returns (bool) {
         if(offeringCompaniesIDs[_locAddr] == offeringCompaniesCounter - 1)
-            offeringCompaniesCounter--;
+        offeringCompaniesCounter--;
         else
-            deletedIds.push(offeringCompaniesIDs[_locAddr]);
+        deletedIds.push(offeringCompaniesIDs[_locAddr]);
         delete offeringCompanies[offeringCompaniesIDs[_locAddr]];
         delete offeringCompaniesIDs[_locAddr];
         remLOC(msg.sender, _locAddr);
@@ -110,4 +110,3 @@ contract ChronoMint is Managed {
         throw;
     }
 }
-

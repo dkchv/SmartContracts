@@ -11,19 +11,22 @@ import "./FeeInterface.sol";
 import "./ChronoBankAssetProxyInterface.sol";
 
 contract ContractsManager is Managed {
-    uint public contractsCounter = 1;
-    uint public otherContractsCounter = 1;
+    uint contractsCounter = 1;
+    uint otherContractsCounter = 1;
     mapping (address => bool) public timeHolder;
     mapping (uint => address) internal contracts;
     mapping (uint => address) internal otherContracts;
-    mapping (address => uint) internal contractsId;
+    uint[] deletedIds;
+    mapping (address => uint) public contractsId;
     mapping (address => uint) internal otherContractsId;
+    uint[] deletedOtherIds;
     mapping (uint => bytes32) internal contractsHash;
     mapping (uint => bytes32) internal otherContractsHash;
 
     event UpdateContract(address contractAddress, uint id);
     event UpdateOtherContract(address contractAddress, uint id);
     event Reissue(uint value, address locAddr);
+    event Test(uint value);
 
     function init(address _userStorage, address _shareable) returns (bool) {
         if (userStorage != 0x0) {
@@ -32,6 +35,10 @@ contract ContractsManager is Managed {
         userStorage = _userStorage;
         shareable = _shareable;
         return true;
+    }
+
+    function getContractsCounter() constant returns(uint) {
+        return contractsCounter - deletedIds.length - 1;
     }
 
     // this method is implemented only for test purposes
@@ -89,6 +96,7 @@ contract ContractsManager is Managed {
     function getContracts() constant returns (address[] result) {
         result = new address[](contractsCounter - 1);
         for (uint i = 0; i < contractsCounter - 1; i++) {
+            if(contracts[i + 1] != 0x0)
             result[i] = contracts[i + 1];
         }
         return result;
@@ -115,16 +123,16 @@ contract ContractsManager is Managed {
         return false;
     }
 
-//    function claimExchangeOwnership(address _addr) onlyAuthorized() returns (bool) {
-//        if (OwnedInterface(_addr).claimContractOwnership()) {
-//            return true;
-//        }
-//        return false;
-//    }
+    //    function claimExchangeOwnership(address _addr) onlyAuthorized() returns (bool) {
+    //        if (OwnedInterface(_addr).claimContractOwnership()) {
+    //            return true;
+    //        }
+    //        return false;
+    //    }
 
-//    function setExchangePrices(address _ec, uint _buyPrice, uint _sellPrice) onlyAuthorized() returns (bool) {
-//        return ExchangeInterface(_ec).setPrices(_buyPrice, _sellPrice);
-//    }
+    //    function setExchangePrices(address _ec, uint _buyPrice, uint _sellPrice) onlyAuthorized() returns (bool) {
+    //        return ExchangeInterface(_ec).setPrices(_buyPrice, _sellPrice);
+    //    }
 
     function forward(uint _toId, bytes data) onlyAuthorized() returns (bool) {
         if (!otherContracts[_toId].call(data)) {
@@ -193,12 +201,22 @@ contract ContractsManager is Managed {
     }
 
     function setAddressInt(address value) internal returns (uint) {
-        if (contractsId[value] == uint(0x0)) {
+        uint id;
+        if (contractsId[value] == 0) {
             ERC20Interface(value).totalSupply();
-            contracts[contractsCounter] = value;
-            contractsId[value] = contractsCounter;
+            if(deletedIds.length == 0) {
+                id = contractsCounter;
+                contractsCounter++;
+            }
+            else {
+                id = deletedIds[deletedIds.length-1];
+                deletedIds.length--;
+            }
+            contracts[id] = value;
+            contractsId[value] = id;
             UpdateContract(value, contractsId[value]);
-            return contractsCounter++;
+            Test(contractsCounter);
+            return id;
         }
         return contractsId[value];
     }
@@ -214,21 +232,20 @@ contract ContractsManager is Managed {
         return false;
     }
 
-    function removeAddress(address value) multisig {
+    function removeAddress(address value) multisig returns(bool) {
         if(contractsId[value] > 0) {
-            removeAddr(contractsId[value]);
-            UpdateContract(value, contractsId[value]);
+            if(contractsId[value] == contractsCounter - 1) {
+                contractsCounter--;
+            }
+            else {
+                deletedIds.push(contractsId[value]);
+            }
+            delete contracts[contractsId[value]];
             delete contractsId[value];
+            UpdateContract(value, contractsId[value]);
+            return true;
         }
-    }
-
-    function removeAddr(uint i) internal {
-        if (i >= contractsCounter) return;
-        for (; i < contractsCounter; i++) {
-            contracts[i] = contracts[i + 1];
-        }
-        delete contracts[i + 1];
-        contractsCounter--;
+        return false;
     }
 
     function getOtherAddress(uint _id) constant returns (address) {
@@ -240,13 +257,23 @@ contract ContractsManager is Managed {
     }
 
     function setOtherAddressInt(address value) internal returns (uint) {
-       if (otherContractsId[value] == uint(0x0)) {
-           otherContracts[otherContractsCounter] = value;
-           otherContractsId[value] = otherContractsCounter;
-           UpdateOtherContract(value,otherContractsId[value]);
-           return otherContractsCounter++;
-       }
-       return otherContractsId[value];
+        uint id;
+        if (otherContractsId[value] == 0) {
+            if(deletedOtherIds.length == 0) {
+                id = otherContractsCounter;
+                otherContractsCounter++;
+            }
+            else {
+                id = deletedOtherIds[deletedOtherIds.length-1];
+                deletedOtherIds.length--;
+            }
+            otherContracts[id] = value;
+            otherContractsId[value] = id;
+            UpdateOtherContract(value, otherContractsId[value]);
+            Test(otherContractsCounter);
+            return id;
+        }
+        return otherContractsId[value];
     }
 
     function changeOtherAddress(address _from, address _to) multisig returns (bool) {
@@ -260,20 +287,20 @@ contract ContractsManager is Managed {
         return false;
     }
 
-    function removeOtherAddress(address value) multisig {
+    function removeOtherAddress(address value) multisig returns(bool) {
         if(otherContractsId[value] > 0) {
-            removeOtherAddr(otherContractsId[value]);
-            UpdateOtherContract(value, otherContractsId[value]);
+            if(otherContractsId[value] == otherContractsCounter - 1) {
+                otherContractsCounter--;
+            }
+            else {
+                deletedIds.push(otherContractsId[value]);
+            }
+            delete otherContracts[otherContractsId[value]];
             delete otherContractsId[value];
+            UpdateContract(value, otherContractsId[value]);
+            return true;
         }
-    }
-
-    function removeOtherAddr(uint i) internal {
-        if (i >= otherContractsCounter) return;
-        for (; i < otherContractsCounter; i++) {
-            otherContracts[i] = otherContracts[i + 1];
-        }
-        otherContractsCounter--;
+        return false;
     }
 
     function()
