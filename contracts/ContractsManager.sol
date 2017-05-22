@@ -11,19 +11,17 @@ import "./FeeInterface.sol";
 import "./ChronoBankAssetProxyInterface.sol";
 
 contract ContractsManager is Managed {
-    uint contractsCounter = 1;
+
     uint otherContractsCounter = 1;
     mapping (address => bool) public timeHolder;
-    mapping (uint => address) internal contracts;
+
     mapping (uint => address) internal otherContracts;
-    uint[] deletedIds;
-    mapping (address => uint) public contractsId;
     mapping (address => uint) internal otherContractsId;
     uint[] deletedOtherIds;
-    mapping (uint => bytes32) internal contractsHash;
+
     mapping (uint => bytes32) internal otherContractsHash;
 
-    event UpdateContract(address contractAddress, uint id);
+
     event UpdateOtherContract(address contractAddress, uint id);
     event Reissue(uint value, address locAddr);
 
@@ -34,10 +32,6 @@ contract ContractsManager is Managed {
         userStorage = _userStorage;
         shareable = _shareable;
         return true;
-    }
-
-    function getContractsCounter() constant returns(uint) {
-        return contractsCounter - deletedIds.length - 1;
     }
 
     function getOtherCounter() constant returns(uint) {
@@ -55,18 +49,9 @@ contract ContractsManager is Managed {
         }
     }
 
-    function setContractHash(uint _id, bytes32 _hash) onlyAuthorized() returns (bool) {
-        contractsHash[_id] = _hash;
-        return true;
-    }
-
     function setOtherContractHash(uint _id, bytes32 _hash) onlyAuthorized() returns (bool) {
         otherContractsHash[_id] = _hash;
         return true;
-    }
-
-    function getContractHash(uint _id) constant returns (bytes32) {
-        return (contractsHash[_id]);
     }
 
     function getOtherContractHash(uint _id) constant returns (bytes32) {
@@ -94,15 +79,6 @@ contract ContractsManager is Managed {
             }
         }
         throw;
-    }
-
-    function getContracts() constant returns (address[] result) {
-        result = new address[](contractsCounter - 1);
-        for (uint i = 0; i < contractsCounter - 1; i++) {
-            if(contracts[i + 1] != 0x0)
-            result[i] = contracts[i + 1];
-        }
-        return result;
     }
 
     function getOtherContracts() constant returns (address[] result) {

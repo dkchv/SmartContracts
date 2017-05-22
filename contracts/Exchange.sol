@@ -20,6 +20,10 @@ contract Exchange is Owned {
     // Assigned ERC20 token.
     Asset public asset;
 
+    address rewards;
+
+    address delegate;
+
     //Switch for turn on and off the exchange operations
     bool public isActive;
 
@@ -28,6 +32,9 @@ contract Exchange is Owned {
 
     // Price in wei at which exchange sells tokens.
     uint public sellPrice;
+
+    // Fee value for operations 10000 is 0.01.
+    uint public feePercent = 10000;
 
     // User sold tokens and received wei.
     event Sell(address indexed who, uint token, uint eth);
@@ -39,6 +46,14 @@ contract Exchange is Owned {
     event Error(bytes32 message);
 
     /**
+     * @dev On received ethers
+     * @param sender Ether sender
+     * @param amount Ether value
+     */
+    event ReceivedEther(address indexed sender,
+    uint256 indexed amount);
+
+    /**
      * Assigns ERC20 token for exchange.
      *
      * Can be set only once, and only by contract owner.
@@ -47,14 +62,24 @@ contract Exchange is Owned {
      *
      * @return success.
      */
-    function init(Asset _asset) onlyContractOwner() returns(bool) {
+    function init(Asset _asset, address _rewards, address _delegate, uint _fee) onlyContractOwner() returns(bool) {
         if (address(asset) != 0x0) {
             return false;
         }
         asset = _asset;
+        rewards = _rewards;
+        delegate = _delegate;
+        setFee(_fee);
+        isActive = true;
         return true;
     }
 
+    function setFee(uint _feePercent) internal returns(bool) {
+        if(feePercent < 1 || feePercent > 10000)
+            return false;
+        feePercent = _feePercent;
+        return true;
+    }
 
     /**
      * Set exchange operation prices.
@@ -100,6 +125,10 @@ contract Exchange is Owned {
      * @return success.
      */
     function sell(uint _amount, uint _price) returns(bool) {
+        if(!isActive) {
+            Error("Maintenance mode");
+        }
+
         if (_price > buyPrice) {
             Error("Price is too high");
             return false;
@@ -137,6 +166,10 @@ contract Exchange is Owned {
      * @return success.
      */
     function buy(uint _amount, uint _price) payable returns(bool) {
+        if(!isActive) {
+            Error("Maintenance mode");
+        }
+
         if (_price < sellPrice) {
             Error("Price is to low");
             throw;
@@ -175,12 +208,20 @@ contract Exchange is Owned {
             Error("Insufficient token supply");
             return false;
         }
-        if (!asset.transfer(_recipient, _amount)) {
+
+        uint amount = (_amount * 10000)/(10000 + feePercent);
+
+        if (!asset.transfer(_recipient, amount)) {
             Error("Transfer failed");
             return false;
         }
 
-        WithdrawTokens(_recipient, _amount);
+        WithdrawTokens(_recipient, amount);
+
+        if(!asset.transfer(rewards, _amount - amount)) {
+            Error("Fee transfer failed");
+        }
+
         return true;
     }
 
@@ -212,12 +253,20 @@ contract Exchange is Owned {
             Error("Insufficient ether supply");
             return false;
         }
-        if (!_recipient.send(_amount)) {
+
+        uint amount = (_amount * 10000)/(10000 + feePercent);
+
+        if (!_recipient.send(amount)) {
             Error("Transfer failed");
             return false;
         }
 
-        WithdrawEth(_recipient, _amount);
+        WithdrawEth(_recipient, amount);
+
+        if(!rewards.send(_amount - amount)) {
+            Error("Fee transfer failed");
+        }
+
         return true;
     }
 
@@ -274,5 +323,7 @@ contract Exchange is Owned {
     /**
      * Accept all ether to maintain exchange supply.
      */
-    function () payable {}
+    function () payable {
+        ReceivedEther(msg.sender, msg.value);
+    }
 }

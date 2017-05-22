@@ -3,37 +3,56 @@ pragma solidity ^0.4.11;
 import "./Managed.sol";
 import "./Exchange.sol";
 import "./KrakenPriceTicker.sol";
-import "./ContractsManager.sol";
-//import "./StrToBytes32Array.sol";
+import {ERC20ManagerInterface as ERC20Manager} from "./ERC20ManagerInterface.sol";
 import {ERC20Interface as Asset} from "./ERC20Interface.sol";
 
 contract ExchangeManager is Managed {
-    address contractsManager;
+    address erc20Manager;
     mapping(uint => address) exchanges;
     mapping(address => uint) exchangesIds;
+    mapping(address => address) owners;
     uint exchangesCount = 1;
     uint[] deletedIds;
 
     //Exchanges APIs for rate tracking array
-    mapping(uint => bytes32[]) public URLs;
+    mapping(uint => string) public URLs;
     mapping(bytes32 => uint) URLids;
-    uint URLCount = 1;
+
+    uint URLsCount = 1;
 
     modifier onlyExchangeOwner(uint _id) {
-        if (msg.sender == Exchange(exchanges[_id]).contractOwner()) {
+        if (msg.sender == owners[exchanges[_id]]) {
             _;
         }
     }
 
-    function init(address _contractsManager) onlyAuthorized returns(bool) {
-        contractsManager = _contractsManager;
+    function init(address _erc20Manager) returns(bool) {
+        erc20Manager = _erc20Manager;
+        return true;
+    }
+
+    function forward(uint _id, bytes data) onlyExchangeOwner(_id) returns (bool) {
+        if (!Exchange(exchanges[_id]).call(data)) {
+            throw;
+        }
         return true;
     }
 
     function addURL(string _url) returns(bool) {
-        //URLs[URLCount] = StrToBytes32Array(_url);
-        //URLCount++;
+        bytes32 hash = sha3(_url);
+        if(URLids[hash] == 0) {
+            URLs[URLsCount] = _url;
+            URLids[hash] = URLsCount;
+            URLsCount++;
+            return true;
+        }
+        return false;
     }
+
+    function getURLid(string _url) returns(uint) {
+        return URLids[sha3(_url)];
+    }
+
 
     function removeURL(string _url) returns(bool) {
 
@@ -64,13 +83,16 @@ contract ExchangeManager is Managed {
         return false;
     }
 
-    function createExchange(uint _token, bytes32 _symbol) returns(uint) {
-        if(_symbol == 0x0)
-            return 0;
-        address exchangeAddr = new Exchange();
-        Exchange(exchangeAddr).init(Asset(ContractsManager(contractsManager).getAddress(_token)));
-        exchanges[exchangesCount] = exchangeAddr;
-        exchangesIds[exchangeAddr] = exchangesCount;
-        return exchangesCount++;
+    function createExchange(uint _token) returns(uint) {
+        address tokenAddr = ERC20Manager(erc20Manager).getAddress(_token);
+        if(tokenAddr != 0x0) {
+            address exchangeAddr = new Exchange();
+            address tickerAddr = new KrakenPriceTicker();
+            Exchange(exchangeAddr).init(Asset(ERC20Manager(ERC20Manager)));
+            exchanges[exchangesCount] = exchangeAddr;
+            exchangesIds[exchangeAddr] = exchangesCount;
+            owners[exchangeAddr] = msg.sender;
+            return exchangesCount++;
+        }
     }
 }
