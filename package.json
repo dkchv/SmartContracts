@@ -5,14 +5,14 @@
   "main": "index.js",
   "scripts": {
     "release": "standard-version",
-    "install": "mv truffle-config.js truffle.js",
+    "install": "cp truffle-config.js truffle.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Mike Fluff <mf@mikefluff.com> (http://mikefluff.com)",
   "license": "GPLv3",
   "dependencies": {
     "truffle": "Mikefluff/truffle",
-    "truffle-hdwallet-provider": "../truffle-hdwallet-provider",
+    "truffle-hdwallet-provider": "mikefluff/truffle-hdwallet-provider",
     "ethereum-bridge": "oraclize/ethereum-bridge",
     "ethereumjs-testrpc": "mikefluff/testrpc"
   },
