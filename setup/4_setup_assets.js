@@ -175,7 +175,6 @@ module.exports = (callback) => {
         ChronoBankPlatformEmitter.address, paramsGas
       )
     })
-
     .then(() => {
       return eventsHistory.addVersion(chronoBankPlatform.address, 'Origin', 'Initial version.')
     }).then(() => {
@@ -250,20 +249,20 @@ module.exports = (callback) => {
     })
 
     /** EXCHANGE INIT >>> */
-    .then(() => {
-      exchange.setPrices(1, 2)
-    })
-    .then(() => {
-      return chronoMint.proposeLOC(
-        bytes32('Bob\'s Hard Workers'),
-        bytes32('www.ru'), 1000,
-        bytes32fromBase58('QmTeW79w7QQ6Npa3b1d5tANreCDxF2iDaAPsDvW6KtLmfB'),
-        1484554656
-      )
-    })
-    .then(() => {
-      return web3.eth.sendTransaction({to: Exchange.address, value: BALANCE_ETH, from: accounts[0]})
-    })
+  //  .then(() => {
+  //    exchange.setPrices(1, 2)
+  //  })
+  //  .then(() => {
+  //    return chronoMint.proposeLOC(
+  //      bytes32('Bob\'s Hard Workers'),
+  //      bytes32('www.ru'), 1000,
+  //      bytes32fromBase58('QmTeW79w7QQ6Npa3b1d5tANreCDxF2iDaAPsDvW6KtLmfB'),
+  //      1484554656
+  //    )
+  //  })
+  //  .then(() => {
+  //    return web3.eth.sendTransaction({to: Exchange.address, value: BALANCE_ETH, from: accounts[0]})
+  //  })
     .then(() => {
       exit()
     })
