@@ -34,7 +34,7 @@ import "./Owned.sol";
  * didn't happen yet.
  */
 contract Rewards is Owned {
-// Structure of a particular period.
+    // Structure of a particular period.
     struct Period {
     uint startDate;                                           // Period starting date, also
     uint totalShares;
@@ -54,47 +54,47 @@ contract Rewards is Owned {
     mapping(address => uint) assetsId;
     uint[] deletedIds;
 
-// Minimum period length, in days.
+    // Minimum period length, in days.
     uint public closeInterval;
 
-// Maximum shares which can be transfered in on TX
+    // Maximum shares which can be transfered in on TX
     uint public maxSharesTransfer = 30;
 
-// Asset rewards accumulated for shareholder.
+    // Asset rewards accumulated for shareholder.
     mapping(address => mapping(address => uint)) rewards;
 
-// Asset rewards available for withdrawal from all previous periods.
+    // Asset rewards available for withdrawal from all previous periods.
     mapping(address => uint) public rewardsLeft;
 
-// Periods list. Last one is always active.
+    // Periods list. Last one is always active.
     Period[] public periods;
 
-// Period closed/started.
+    // Period closed/started.
     event PeriodClosed();
 
-// Rewards asset registered to distribute accumulated balance.
+    // Rewards asset registered to distribute accumulated balance.
     event AssetRegistration(address indexed assetAddress, uint balance);
 
-// Rewards from a period distributed for a shareholder.
+    // Rewards from a period distributed for a shareholder.
     event CalculateReward(address indexed assetAddress, address indexed who, uint reward);
 
-// Reward withdrawn for a shareholder.
+    // Reward withdrawn for a shareholder.
     event WithdrawReward(address indexed assetAddress, address indexed who, uint amount);
 
-// Something went wrong.
+    // Something went wrong.
     event Error(bytes32 message);
 
-/**
- * Sets TimeHolder contract and period minimum length.
- * Starts the first period.
- *
- * Can be set only once.
- *
- * @param _timeHolder TIME deposit contract address.
- * @param _closeIntervalDays period minimum length, in days.
- *
- * @return success.
- */
+    /**
+     * Sets TimeHolder contract and period minimum length.
+     * Starts the first period.
+     *
+     * Can be set only once.
+     *
+     * @param _timeHolder TIME deposit contract address.
+     * @param _closeIntervalDays period minimum length, in days.
+     *
+     * @return success.
+     */
     function init(address _timeHolder, uint _closeIntervalDays) returns(bool) {
         if (periods.length > 0) {
             return false;
@@ -126,9 +126,9 @@ contract Rewards is Owned {
 
     function periodUnique(uint _period) constant returns(uint) {
         if(_period == lastPeriod())
-            return TimeHolder(timeHolder).shareholdersCount() - 1;
+        return TimeHolder(timeHolder).shareholdersCount() - 1;
         else
-            return periods[_period].shareholdersCount - 1;
+        return periods[_period].shareholdersCount - 1;
     }
 
     modifier onlyTimeHolder() {
@@ -136,13 +136,13 @@ contract Rewards is Owned {
             _;
         }
     }
-/**
- * Close current active period and start the new period.
- *
- * Can only be done if period was active longer than minimum length.
- *
- * @return success.
- */
+    /**
+     * Close current active period and start the new period.
+     *
+     * Can only be done if period was active longer than minimum length.
+     *
+     * @return success.
+     */
     function closePeriod() returns(bool) {
         Period period = periods[lastPeriod()];
 
@@ -151,7 +151,7 @@ contract Rewards is Owned {
             return false;
         }
 
-    // Add new period.
+        // Add new period.
         periods.length++;
         periods[lastPeriod()].startDate = now;
         periods[lastClosedPeriod()].shareholdersCount = TimeHolder(timeHolder).shareholdersCount();
@@ -169,9 +169,9 @@ contract Rewards is Owned {
         Period period = periods[lastClosedPeriod()];
         if(!period.isClosed && period.shareholdersCount > maxSharesTransfer) {
             if(period.shareholdersCount % maxSharesTransfer == 0)
-                return period.shareholdersCount / maxSharesTransfer;
+            return period.shareholdersCount / maxSharesTransfer;
             else
-                return period.shareholdersCount / maxSharesTransfer + 1;
+            return period.shareholdersCount / maxSharesTransfer + 1;
         }
         return 0;
     }
@@ -179,16 +179,16 @@ contract Rewards is Owned {
     function storeDeposits(uint _part) returns(bool) {
         uint first = _part * maxSharesTransfer + 1;
         if(first > periods[lastClosedPeriod()].shareholdersCount)
-            throw;
+        throw;
         uint last = first + maxSharesTransfer;
         if(last >= periods[lastClosedPeriod()].shareholdersCount)
-            last = periods[lastClosedPeriod()].shareholdersCount;
+        last = periods[lastClosedPeriod()].shareholdersCount;
         address holder;
         for(;first < last;first++) {
             holder = TimeHolder(timeHolder).shareholders(first);
             if(periods[lastClosedPeriod()].shares[holder] == 0) {
-                    periods[lastClosedPeriod()].shares[holder] = TimeHolder(timeHolder).shares(holder);
-                    periods[lastClosedPeriod()].totalShares += periods[lastClosedPeriod()].shares[holder];
+                periods[lastClosedPeriod()].shares[holder] = TimeHolder(timeHolder).shares(holder);
+                periods[lastClosedPeriod()].totalShares += periods[lastClosedPeriod()].shares[holder];
             }
         }
         first = _part * maxSharesTransfer + 1;
@@ -248,156 +248,156 @@ contract Rewards is Owned {
         return false;
     }
 
-/**
- * Calculate and distribute reward of a specified registered rewards asset.
- *
- * Distribution is made for caller and last closed period.
- *
- * Can only be done once per asset per closed period.
- *
- * @param _assetAddress registered rewards asset contract address.
- *
- * @return success.
- */
+    /**
+     * Calculate and distribute reward of a specified registered rewards asset.
+     *
+     * Distribution is made for caller and last closed period.
+     *
+     * Can only be done once per asset per closed period.
+     *
+     * @param _assetAddress registered rewards asset contract address.
+     *
+     * @return success.
+     */
     function calculateReward(address _assetAddress) internal returns(bool) {
         return calculateRewardForAddressAndPeriod(_assetAddress, msg.sender, lastClosedPeriod());
     }
 
-/**
- * Calculate and distribute reward of a specified registered rewards asset.
- *
- * Distribution is made for specified shareholder and last closed period.
- *
- * Can only be done once per asset per shareholder per closed period.
- *
- * This function meant to be used by some backend application to calculate rewards
- * for arbitrary shareholders.
- *
- * @param _assetAddress registered rewards asset contract address.
- * @param _address shareholder address.
- *
- * @return success.
- */
+    /**
+     * Calculate and distribute reward of a specified registered rewards asset.
+     *
+     * Distribution is made for specified shareholder and last closed period.
+     *
+     * Can only be done once per asset per shareholder per closed period.
+     *
+     * This function meant to be used by some backend application to calculate rewards
+     * for arbitrary shareholders.
+     *
+     * @param _assetAddress registered rewards asset contract address.
+     * @param _address shareholder address.
+     *
+     * @return success.
+     */
     function calculateRewardFor(address _assetAddress, address _address) internal returns(bool) {
         return calculateRewardForAddressAndPeriod(_assetAddress, _address, lastClosedPeriod());
     }
 
-/**
- * Calculate and distribute reward of a specified registered rewards asset.
- *
- * Distribution is made for caller and specified closed period.
- *
- * Can only be done once per asset per closed period.
- *
- * @param _assetAddress registered rewards asset contract address.
- * @param _period closed period to calculate.
- *
- * @return success.
- */
+    /**
+     * Calculate and distribute reward of a specified registered rewards asset.
+     *
+     * Distribution is made for caller and specified closed period.
+     *
+     * Can only be done once per asset per closed period.
+     *
+     * @param _assetAddress registered rewards asset contract address.
+     * @param _period closed period to calculate.
+     *
+     * @return success.
+     */
     function calculateRewardForPeriod(address _assetAddress, uint _period) internal returns(bool) {
         return calculateRewardForAddressAndPeriod(_assetAddress, msg.sender, _period);
     }
 
-/**
- * Calculate and distribute reward of a specified registered rewards asset.
- *
- * Distribution is made for specified shareholder and closed period.
- *
- * Can only be done once per asset per shareholder per closed period.
- *
- * @param _assetAddress registered rewards asset contract address.
- * @param _address shareholder address.
- * @param _period closed period to calculate.
- *
- * @return success.
- */
+    /**
+     * Calculate and distribute reward of a specified registered rewards asset.
+     *
+     * Distribution is made for specified shareholder and closed period.
+     *
+     * Can only be done once per asset per shareholder per closed period.
+     *
+     * @param _assetAddress registered rewards asset contract address.
+     * @param _address shareholder address.
+     * @param _period closed period to calculate.
+     *
+     * @return success.
+     */
     function calculateRewardForAddressAndPeriod(address _assetAddress, address _address, uint _period) internal returns(bool) {
         Period period = periods[_period];
         //if(period.isClosed) {
-            if (period.assetBalances[_assetAddress] == 0) {
-                Error("Reward calculation failed");
-                return false;
-            }
+        if (period.assetBalances[_assetAddress] == 0) {
+            Error("Reward calculation failed");
+            return false;
+        }
 
-            if (period.calculated[_assetAddress][_address]) {
-                Error("Reward is already calculated");
-                return false;
-            }
+        if (period.calculated[_assetAddress][_address]) {
+            Error("Reward is already calculated");
+            return false;
+        }
 
-            uint reward = period.assetBalances[_assetAddress] * period.shares[_address] / period.totalShares;
-            rewards[_assetAddress][_address] += reward;
-            period.calculated[_assetAddress][_address] = true;
+        uint reward = period.assetBalances[_assetAddress] * period.shares[_address] / period.totalShares;
+        rewards[_assetAddress][_address] += reward;
+        period.calculated[_assetAddress][_address] = true;
 
-            CalculateReward(_assetAddress, _address, reward);
-            return true;
+        CalculateReward(_assetAddress, _address, reward);
+        return true;
         //}
         return false;
     }
 
-/**
- * Withdraw accumulated reward of a specified rewards asset.
- *
- * Withdrawal is made for caller and total amount.
- *
- * @param _asset registered rewards asset contract address.
- *
- * @return success.
- */
+    /**
+     * Withdraw accumulated reward of a specified rewards asset.
+     *
+     * Withdrawal is made for caller and total amount.
+     *
+     * @param _asset registered rewards asset contract address.
+     *
+     * @return success.
+     */
     function withdrawRewardTotal(Asset _asset) returns(bool) {
         return withdrawRewardFor(_asset, msg.sender, rewardsFor(_asset, msg.sender));
     }
 
-/**
- * Withdraw accumulated reward of a specified rewards asset.
- *
- * Withdrawal is made for specified shareholder and total amount.
- *
- * This function meant to be used by some backend application to send rewards
- * for arbitrary shareholders.
- *
- * @param _asset registered rewards asset contract address.
- * @param _address shareholder address to withdraw for.
- *
- * @return success.
- */
+    /**
+     * Withdraw accumulated reward of a specified rewards asset.
+     *
+     * Withdrawal is made for specified shareholder and total amount.
+     *
+     * This function meant to be used by some backend application to send rewards
+     * for arbitrary shareholders.
+     *
+     * @param _asset registered rewards asset contract address.
+     * @param _address shareholder address to withdraw for.
+     *
+     * @return success.
+     */
     function withdrawRewardTotalFor(Asset _asset, address _address) returns(bool) {
         return withdrawRewardFor(_asset, _address, rewardsFor(_asset, _address));
     }
 
-/**
- * Withdraw accumulated reward of a specified rewards asset.
- *
- * Withdrawal is made for caller and specified amount.
- *
- * @param _asset registered rewards asset contract address.
- * @param _amount amount to withdraw.
- *
- * @return success.
- */
+    /**
+     * Withdraw accumulated reward of a specified rewards asset.
+     *
+     * Withdrawal is made for caller and specified amount.
+     *
+     * @param _asset registered rewards asset contract address.
+     * @param _amount amount to withdraw.
+     *
+     * @return success.
+     */
     function withdrawReward(Asset _asset, uint _amount) returns(bool) {
         return withdrawRewardFor(_asset, msg.sender, _amount);
     }
 
-/**
- * Withdraw accumulated reward of a specified rewards asset.
- *
- * Withdrawal is made for specified shareholder and specified amount.
- *
- * @param _asset registered rewards asset contract address.
- * @param _address shareholder address to withdraw for.
- * @param _amount amount to withdraw.
- *
- * @return success.
- */
+    /**
+     * Withdraw accumulated reward of a specified rewards asset.
+     *
+     * Withdrawal is made for specified shareholder and specified amount.
+     *
+     * @param _asset registered rewards asset contract address.
+     * @param _address shareholder address to withdraw for.
+     * @param _amount amount to withdraw.
+     *
+     * @return success.
+     */
     function withdrawRewardFor(Asset _asset, address _address, uint _amount) returns(bool) {
         if (rewardsLeft[_asset] == 0) {
             Error("No rewards left");
             return false;
         }
 
-    // Assuming that transfer(amount) of unknown asset may not result in exactly
-    // amount being taken from rewards contract(i. e. fees taken) we check contracts
-    // balance before and after transfer, and proceed with the difference.
+        // Assuming that transfer(amount) of unknown asset may not result in exactly
+        // amount being taken from rewards contract(i. e. fees taken) we check contracts
+        // balance before and after transfer, and proceed with the difference.
         uint startBalance = _asset.balanceOf(this);
         if (!_asset.transfer(_address, _amount)) {
             Error("Asset transfer failed");
@@ -435,51 +435,51 @@ contract Rewards is Owned {
     }
 
 
-/**
- * Returns proven amount of shares possessed by a shareholder in a period.
- *
- * @param _address shareholder address.
- * @param _period period.
- *
- * @return shares amount.
- */
+    /**
+     * Returns proven amount of shares possessed by a shareholder in a period.
+     *
+     * @param _address shareholder address.
+     * @param _period period.
+     *
+     * @return shares amount.
+     */
     function depositBalanceInPeriod(address _address, uint _period) constant returns(uint) {
         if(_period == lastPeriod())
-            return TimeHolder(timeHolder).shares(_address);
+        return TimeHolder(timeHolder).shares(_address);
         else
-            return periods[_period].shares[_address];
+        return periods[_period].shares[_address];
     }
 
-/**
- * Returns total proven amount of shares possessed by shareholders in a period.
- *
- * @param _period period.
- *
- * @return shares amount.
- */
+    /**
+     * Returns total proven amount of shares possessed by shareholders in a period.
+     *
+     * @param _period period.
+     *
+     * @return shares amount.
+     */
     function totalDepositInPeriod(uint _period) constant returns(uint) {
         if(_period == lastPeriod())
-            return TimeHolder(timeHolder).totalShares();
+        return TimeHolder(timeHolder).totalShares();
         else
-            return periods[_period].totalShares;
+        return periods[_period].totalShares;
     }
 
-/**
- * Returns current active period.
- *
- * @return period.
- */
+    /**
+     * Returns current active period.
+     *
+     * @return period.
+     */
     function lastPeriod() constant returns(uint) {
         return periods.length - 1;
     }
 
-/**
- * Returns last closed period.
- *
- * @dev throws in case if there is no closed periods yet.
- *
- * @return period.
- */
+    /**
+     * Returns last closed period.
+     *
+     * @dev throws in case if there is no closed periods yet.
+     *
+     * @return period.
+     */
     function lastClosedPeriod() constant returns(uint) {
         if (periods.length == 1) {
             throw;
@@ -487,51 +487,51 @@ contract Rewards is Owned {
         return periods.length - 2;
     }
 
-/**
- * Check if period is closed or not.
- *
- * @param _period period.
- *
- * @return period closing state.
- */
+    /**
+     * Check if period is closed or not.
+     *
+     * @param _period period.
+     *
+     * @return period closing state.
+     */
     function isClosed(uint _period) constant returns(bool) {
         return lastClosedPeriod() >= _period;
     }
 
-/**
- * Returns amount of accumulated rewards assets in a period.
- * Always 0 for active period.
- *
- * @param _assetAddress rewards asset contract address.
- * @param _period period.
- *
- * @return assets amount.
- */
+    /**
+     * Returns amount of accumulated rewards assets in a period.
+     * Always 0 for active period.
+     *
+     * @param _assetAddress rewards asset contract address.
+     * @param _period period.
+     *
+     * @return assets amount.
+     */
     function assetBalanceInPeriod(address _assetAddress, uint _period) constant returns(uint) {
         return periods[_period].assetBalances[_assetAddress];
     }
 
-/**
- * Check if shareholder have calculated rewards in a period.
- *
- * @param _assetAddress rewards asset contract address.
- * @param _address shareholder address.
- * @param _period period.
- *
- * @return reward calculation state.
- */
+    /**
+     * Check if shareholder have calculated rewards in a period.
+     *
+     * @param _assetAddress rewards asset contract address.
+     * @param _address shareholder address.
+     * @param _period period.
+     *
+     * @return reward calculation state.
+     */
     function isCalculatedFor(address _assetAddress, address _address, uint _period) constant returns(bool) {
         return periods[_period].calculated[_assetAddress][_address];
     }
 
-/**
- * Returns accumulated asset rewards available for withdrawal for shareholder.
- *
- * @param _assetAddress rewards asset contract address.
- * @param _address shareholder address.
- *
- * @return rewards amount.
- */
+    /**
+     * Returns accumulated asset rewards available for withdrawal for shareholder.
+     *
+     * @param _assetAddress rewards asset contract address.
+     * @param _address shareholder address.
+     *
+     * @return rewards amount.
+     */
     function rewardsFor(address _assetAddress, address _address) constant returns(uint) {
         return rewards[_assetAddress][_address];
     }

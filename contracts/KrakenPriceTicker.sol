@@ -18,13 +18,13 @@ contract KrakenPriceTicker is usingOraclize, Owned {
     string public url;  // for example "https://api.kraken.com/0/public/Ticker?pair=ETHXBT";
     string public formater; //for example "result.XETHXXBT.c.0";
     uint public interval = 1;
-    
+
     event newOraclizeQuery(string description);
     event newKrakenPriceTicker(string price);
 
     function init(bool _dev, string _url, string _formater) {
         if(_dev)
-            OAR = OraclizeAddrResolverI(0x6f485C8BF6fc43eA212E93BBF8ce046C7f1cb475);
+        OAR = OraclizeAddrResolverI(0x6f485C8BF6fc43eA212E93BBF8ce046C7f1cb475);
         url = _url;
         formater = _formater;
         oraclize_setProof(proofType_TLSNotary | proofStorage_IPFS);
@@ -39,18 +39,18 @@ contract KrakenPriceTicker is usingOraclize, Owned {
     }
 
     function setURL(string _url) onlyContractOwner returns(bool) {
-       url = _url;
-       return true;
+        url = _url;
+        return true;
     }
 
     function setFormater(string _formater) onlyContractOwner returns(bool) {
-       formater = _formater;
-       return true;
+        formater = _formater;
+        return true;
     }
 
     function setInterval(uint _interval) onlyContractOwner  returns(bool) {
-       interval = _interval;
-       return true;
+        interval = _interval;
+        return true;
     }
 
     function update() payable {
@@ -61,5 +61,5 @@ contract KrakenPriceTicker is usingOraclize, Owned {
             oraclize_query(interval, "URL", strConcat("json(",url,").",formater));
         }
     }
-    
-} 
+
+}

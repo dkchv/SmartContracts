@@ -76,7 +76,7 @@ contract Exchange is Owned {
 
     function setFee(uint _feePercent) internal returns(bool) {
         if(feePercent < 1 || feePercent > 10000)
-            return false;
+        return false;
         feePercent = _feePercent;
         return true;
     }
