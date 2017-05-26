@@ -6,9 +6,8 @@ contract PendingManager {
     // TYPES
 
     address userStorage;
-    mapping (uint => Transaction) public txs;
-    mapping (bytes32 => uint) txsIndex;
-    uint txsCount = 1;
+    bytes32[] public txHashes;
+    mapping (bytes32 => Transaction) public txs;
 
     struct Transaction {
         address to;
@@ -19,13 +18,10 @@ contract PendingManager {
         uint timestamp;
     }
 
-    uint[] deletedIds;
-
-
     // EVENTS
 
-    event Confirmation(address owner, uint id);
-    event Revoke(address owner, uint id);
+    event Confirmation(address owner, bytes32 hash);
+    event Revoke(address owner, bytes32 hash);
     event Done(bytes32 hash, bytes data, uint timestamp);
     event Error(bytes32 message);
 
@@ -48,43 +44,32 @@ contract PendingManager {
     }
 
     function pendingsCount() constant returns (uint) {
-        return txsCount - deletedIds.length - 1;
+        return txHashes.length;
     }
 
     function pendingYetNeeded(bytes32 _hash) constant returns (uint) {
-        return txs[txsIndex[_hash]].yetNeeded;
+        return txs[_hash].yetNeeded;
     }
 
     function getTxsData(bytes32 _hash) constant returns (bytes) {
-        return txs[txsIndex[_hash]].data;
-    }
-
-    function getPending(uint _id) constant returns (bytes32 hash, bytes data, uint yetNeeded, uint ownersDone, uint timestamp) {
-        return (txs[_id].hash, txs[_id].data, txs[_id].yetNeeded, txs[_id].ownersDone, txs[_id].timestamp);
+        return txs[_hash].data;
     }
 
     function addTx(bytes32 _r, bytes data, address to, address sender) {
-        if (txsIndex[_r] != 0) {
+        if (txs[_r].hash != 0x0) {
             Error("duplicate");
             return;
         }
         if (isOwner(sender)) {
-            uint id;
-            if (deletedIds.length != 0) {
-                id = deletedIds[deletedIds.length - 1];
-                deletedIds.length--;
-            }
-            else {
-                id = txsCount;
-                txsCount++;
-            }
-            txsIndex[_r] = id;
-            txs[id].hash = _r;
-            txs[id].data = data;
-            txs[id].to = to;
-            txs[id].yetNeeded = UserStorage(userStorage).required();
-            txs[id].ownersDone = 0;
-            txs[id].timestamp = now;
+
+            txHashes.push(_r);
+            txs[_r] = Transaction({
+            hash: _r,
+            data: data,
+            to: to,
+            yetNeeded: UserStorage(userStorage).required(),
+            ownersDone: 0,
+            timestamp: now});
             conf(_r, sender);
         }
     }
@@ -94,8 +79,8 @@ contract PendingManager {
     }
 
     function conf(bytes32 _h, address sender) onlyManyOwners(_h, sender) returns (bool) {
-        if (txs[txsIndex[_h]].to != 0) {
-            if (!txs[txsIndex[_h]].to.call(txs[txsIndex[_h]].data)) {
+        if (txs[_h].to != 0) {
+            if (!txs[_h].to.call(txs[_h].data)) {
                 throw;
             }
             deleteTx(_h);
@@ -107,11 +92,11 @@ contract PendingManager {
     function revoke(bytes32 _operation) external {
         if (isOwner(msg.sender)) {
             uint ownerIndexBit = 2 ** UserStorage(userStorage).getMemberId(msg.sender);
-            var pending = txs[txsIndex[_operation]];
+            var pending = txs[_operation];
             if (pending.ownersDone & ownerIndexBit > 0) {
                 pending.yetNeeded++;
                 pending.ownersDone -= ownerIndexBit;
-                Revoke(msg.sender, txsIndex[_operation]);
+                Revoke(msg.sender, _operation);
                 if (pending.yetNeeded == UserStorage(userStorage).required()) {
                     deleteTx(_operation);
                 }
@@ -130,7 +115,7 @@ contract PendingManager {
     }
 
     function hasConfirmed(bytes32 _operation, address _owner) constant returns (bool) {
-        var pending = txs[txsIndex[_operation]];
+        var pending = txs[_operation];
         if (isOwner(_owner)) {
             // determine the bit to set for this owner
             uint ownerIndexBit = 2 ** UserStorage(userStorage).getMemberId(_owner);
@@ -143,7 +128,7 @@ contract PendingManager {
 
     function confirmAndCheck(bytes32 _operation, address sender) internal returns (bool) {
         if (isOwner(sender)) {
-            Transaction pending = txs[txsIndex[_operation]];
+            Transaction pending = txs[_operation];
             // determine the bit to set for this owner
             uint ownerIndexBit = 2 ** UserStorage(userStorage).getMemberId(sender);
             // make sure we (the message sender) haven't confirmed this operation previously
@@ -157,7 +142,7 @@ contract PendingManager {
                     // not enough: record that this owner in particular confirmed
                     pending.yetNeeded--;
                     pending.ownersDone |= ownerIndexBit;
-                    Confirmation(msg.sender, txsIndex[_operation]);
+                    Confirmation(msg.sender, _operation);
                     return false;
                 }
             }
@@ -165,13 +150,14 @@ contract PendingManager {
     }
 
     function deleteTx(bytes32 _h) internal {
-        if (txsIndex[_h] == txsCount - 1) {
-            txsCount--;
-        } else {
-            deletedIds.push(txsIndex[_h]);
+        for (uint i = 0; i < txHashes.length; i++) {
+            if (txHashes[i] == _h) {
+                txHashes[i] = txHashes[txHashes.length - 1];
+                txHashes.length -= 1;
+                break;
+            }
         }
-        delete txsIndex[_h];
-        delete txs[txsIndex[_h]];
+        delete txs[_h];
     }
 
     function()

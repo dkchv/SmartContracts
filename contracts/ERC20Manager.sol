@@ -1,8 +1,9 @@
 pragma solidity ^0.4.11;
 
 import "./Owned.sol";
+import {ERC20Interface as Asset} from "./ERC20Interface.sol";
 
-contract TokenRegistry is Owned {
+contract ERC20Manager is Owned {
 
     event LogAddToken(
     address token,
@@ -32,7 +33,7 @@ contract TokenRegistry is Owned {
 
     mapping (address => TokenMetadata) tokens;
     mapping (string => address) tokenBySymbol;
-    mapping (string => address) tokenByName;
+    //mapping (string => address) tokenByName;
 
     address[] public tokenAddresses;
 
@@ -78,6 +79,7 @@ contract TokenRegistry is Owned {
     onlyContractOwner
     tokenDoesNotExist(_token)
     {
+        Asset(_token).totalSupply();
         tokens[_token] = TokenMetadata({
         token: _token,
         name: _name,
@@ -89,7 +91,6 @@ contract TokenRegistry is Owned {
         });
         tokenAddresses.push(_token);
         tokenBySymbol[_symbol] = _token;
-        tokenByName[_name] = _token;
         LogAddToken(
         _token,
         _name,
@@ -126,7 +127,6 @@ contract TokenRegistry is Owned {
         token.swarmHash
         );
         delete tokenBySymbol[token.symbol];
-        delete tokenByName[token.name];
         delete tokens[_token];
     }
 
@@ -140,8 +140,6 @@ contract TokenRegistry is Owned {
     {
         TokenMetadata token = tokens[_token];
         LogTokenNameChange(_token, token.name, _name);
-        delete tokenByName[token.name];
-        tokenByName[_name] = _token;
         token.name = _name;
     }
 
@@ -210,13 +208,6 @@ contract TokenRegistry is Owned {
         return tokenBySymbol[_symbol];
     }
 
-    /// @dev Provides a registered token's address when given the token name.
-    /// @param _name Name of registered token.
-    /// @return Token's address.
-    function getTokenAddressByName(string _name) constant returns (address tokenAddress) {
-        return tokenByName[_name];
-    }
-
     /// @dev Provides a registered token's metadata, looked up by address.
     /// @param _token Address of registered token.
     /// @return Token metadata.
@@ -242,25 +233,6 @@ contract TokenRegistry is Owned {
         token.ipfsHash,
         token.swarmHash
         );
-    }
-
-    /// @dev Provides a registered token's metadata, looked up by name.
-    /// @param _name Name of registered token.
-    /// @return Token metadata.
-    function getTokenByName(string _name)
-    constant
-    returns (
-    address tokenAddress,
-    string name,
-    string symbol,
-    string url,
-    uint8 decimals,
-    bytes32 ipfsHash,
-    bytes32 swarmHash
-    )
-    {
-        address _token = tokenByName[_name];
-        return getTokenMetaData(_token);
     }
 
     /// @dev Provides a registered token's metadata, looked up by symbol.

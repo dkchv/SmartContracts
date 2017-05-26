@@ -1,18 +1,12 @@
 pragma solidity ^0.4.11;
 
 import "./Managed.sol";
-import "./ChronoBankPlatformInterface.sol";
-import "./ERC20Interface.sol";
 import "./ExchangeInterface.sol";
 import "./OwnedInterface.sol";
-import "./LOCInterface.sol";
-import "./ChronoMintInterface.sol";
-import "./FeeInterface.sol";
-import "./ChronoBankAssetProxyInterface.sol";
 
 contract ContractsManager is Managed {
 
-    enum ContractType {LOCManager, PendingManager, UserManager, ERC20Manager, ExchangeManager, Platform, TIME, LHAU}
+    enum ContractType {LOCManager, PendingManager, UserManager, ERC20Manager, ExchangeManager, TrackersManager, Voting, Rewards, TIME, LH, Assets}
 
     event LogAddContract(
     address contractAddr,
@@ -39,6 +33,7 @@ contract ContractsManager is Managed {
     }
 
     event LogContractDescriptionChange(address contractAddr, string oldDescription, string newDescription);
+    event LogContractAddressChange(address oldAddr, address newAddr);
 
     address[] public contractAddresses;
 
@@ -59,8 +54,6 @@ contract ContractsManager is Managed {
         }
     }
 
-    event Reissue(uint value, address locAddr);
-
     function init(address _userStorage, address _shareable) returns (bool) {
         if (userStorage != 0x0) {
             return false;
@@ -76,20 +69,17 @@ contract ContractsManager is Managed {
         return contractAddresses;
     }
 
-    // this method is implemented only for test purposes
-    function sendTime() returns (bool) {
-        if(!timeHolder[msg.sender]) {
-            timeHolder[msg.sender] = true;
-            return ERC20Interface(contractByType[uint(ContractType.TIME)]).transfer(msg.sender, 1000000000);
-        }
-        else {
-            return false;
-        }
-    }
-
-    function claimContractOwnership(address _addr, ContractType _type) onlyAuthorized() returns (bool) {
+    function claimContractOwnership(address _addr, ContractType _type) contractDoesNotExist(_addr) onlyAuthorized() returns (bool) {
         if (OwnedInterface(_addr).claimContractOwnership()) {
+            contractAddresses.push(_addr);
             contractByType[uint(_type)] = _addr;
+            contracts[_addr] = ContractMetadata({
+            contractAddr: _addr,
+            tp: _type,
+            description: '',
+            ipfsHash: '',
+            swarmHash: ''
+            });
             return true;
         }
         return false;
@@ -102,54 +92,11 @@ contract ContractsManager is Managed {
         return true;
     }
 
-    function reissueAsset(uint _id, bytes32 symbol, uint _value, address _locAddr) multisig returns (bool) {
-        if(symbol != 0x0) {
-            address platform = ChronoBankAssetProxyInterface(contractByType[uint(ContractType.TIME)]).chronoBankPlatform();
-            if (platform != 0x0 && ChronoBankPlatformInterface(platform).isReissuable(symbol)) {
-                uint issued = LOCInterface(_locAddr).getIssued();
-                if(_value <= LOCInterface(_locAddr).getIssueLimit() - issued) {
-                    if(ChronoBankPlatformInterface(platform).reissueAsset(symbol, _value)) {
-                        address Mint = LOCInterface(_locAddr).getContractOwner();
-                        Reissue(_value, _locAddr);
-                        return ChronoMintInterface(Mint).call(bytes4(sha3("setLOCIssued(address,uint256)")), _locAddr, issued + _value);
-                    }
-                }
-            }
-        }
-        return false;
+    function getContractAddressByType(ContractType _type) constant returns (address contractAddress) {
+        return contractByType[uint(_type)];
     }
 
-    function revokeAsset(uint _id, bytes32 symbol, uint _value, address _locAddr) multisig returns (bool) {
-        if(symbol != 0x0) {
-            address platform = ChronoBankAssetProxyInterface(contractByType[uint(ContractType.TIME)]).chronoBankPlatform();
-            if (platform != 0x0 && ChronoBankPlatformInterface(platform).isReissuable(symbol)) {
-                uint issued = LOCInterface(_locAddr).getIssued();
-                if(_value <= issued) {
-                    if(ChronoBankPlatformInterface(platform).revokeAsset(symbol, _value)) {
-                        address Mint = LOCInterface(_locAddr).getContractOwner();
-                        Reissue(_value, _locAddr);
-                        return ChronoMintInterface(Mint).call(bytes4(sha3("setLOCIssued(address,uint256)")), _locAddr, issued - _value);
-                    }
-                }
-            }
-        }
-        return false;
-    }
-
- //   function sendAsset(uint _id, address _to, uint _value) onlyAuthorized() returns (bool) {
- //       if(contracts[_id] != 0x0) {
- //           address assetProxy = contracts[_id];
- //           if(ChronoBankAssetProxyInterface(contracts[_id]).smbl() == 'LHT') {
- //               uint feePercent = FeeInterface(ChronoBankAssetProxyInterface(assetProxy).getLatestVersion()).feePercent();
- //               uint amount = (_value * 10000)/(10000 + feePercent);
- //               return ERC20Interface(assetProxy).transfer(_to, amount);
- //           }
- //           return ERC20Interface(assetProxy).transfer(_to, _value);
- //       }
- //       return false;
- //   }
-
-
+    /// @dev Allow owner to add new contract
     function addContract(
     address _contractAddr,
     ContractType _type,
@@ -157,7 +104,7 @@ contract ContractsManager is Managed {
     bytes32 _ipfsHash,
     bytes32 _swarmHash)
     public
-    onlyAuthorized()
+    multisig
     contractDoesNotExist(_contractAddr)
     {
         contracts[_contractAddr] = ContractMetadata({
@@ -178,7 +125,7 @@ contract ContractsManager is Managed {
         );
     }
 
-    /// @dev Allows owner to remove an existing token from the registry.
+    /// @dev Allows owner to remove an existing contract from the registry.
     /// @param _contractAddr Address of existing token.
     function removeContract(address _contractAddr)
     public
@@ -202,6 +149,26 @@ contract ContractsManager is Managed {
         );
         delete contractByType[uint(_contract.tp)];
         delete contracts[_contract.contractAddr];
+    }
+
+    /// @dev Allows owner to modify an existing contract's address.
+    /// @param _contractAddr Address of contract.
+    /// @param _newAddr New address of contract.
+    function setContractAddress(address _contractAddr, address _newAddr)
+    public
+    onlyAuthorized()
+    contractExists(_contractAddr)
+    {
+        ContractMetadata _contract = contracts[_contractAddr];
+        _contract.contractAddr = _newAddr;
+        contractByType[uint(_contract.tp)] = _newAddr;
+        for (uint i = 0; i < contractAddresses.length; i++) {
+            if (contractAddresses[i] == _contractAddr) {
+                contractAddresses[i] = _newAddr;
+                break;
+            }
+        }
+        LogContractAddressChange(_contractAddr, _newAddr);
     }
 
     /// @dev Allows owner to modify an existing token's name.
