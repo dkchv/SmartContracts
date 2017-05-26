@@ -11,7 +11,7 @@ contract ERC20ManagerInterface {
     string _url,
     uint8 _decimals,
     bytes32 _ipfsHash,
-    bytes32 _swarmHash);
+    bytes32 _swarmHash) returns(bool);
 
 }
 

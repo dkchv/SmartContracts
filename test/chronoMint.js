@@ -161,9 +161,11 @@ return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, Prox
       exchangeManager = instance;
       return contractsManager.addContract(exchangeManager.address,4,'ExchangeManager','0x0','0x0')
     }).then(function () {
-      return contractsManager.addContract(chronoBankPlatform.address,9,'Time Token Platform','0x0','0x0')
+      return contractsManager.addContract(chronoBankPlatform.address,8,'Time Token Platform','0x0','0x0')
     }).then(function () {
-      return contractsManager.addContract(chronoBankPlatform.address,8,'LH Token Platform','0x0','0x0')
+      return contractsManager.addContract(chronoBankPlatform.address,9,'LH Token Platform','0x0','0x0')
+    }).then(function () {
+      return contractsManager.addContract(assetsManager.address,10,'Assets Manager','0x0','0x0')
     }).then(function () {
       return UserManager.deployed()
     }).then(function (instance) {
@@ -265,9 +267,9 @@ return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, Prox
     }).then(function (r) {
       return ChronoBankAssetProxy.deployed()
     }).then(function (instance) {
-      return instance.transfer(chronoMint.address, 200000000000, {from: accounts[0]})
+      return instance.transfer(assetsManager.address, 200000000000, {from: accounts[0]})
     }).then(function (r) {
-      return chronoBankPlatform.changeOwnership(SYMBOL, chronoMint.address, {from: accounts[0]})
+      return chronoBankPlatform.changeOwnership(SYMBOL, assetsManager.address, {from: accounts[0]})
     }).then(function (r) {
       return chronoBankPlatform.issueAsset(SYMBOL2, 0, NAME2, DESCRIPTION2, BASE_UNIT, IS_REISSUABLE, {
         from: accounts[0],
@@ -294,7 +296,7 @@ return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, Prox
     }).then(function () {
       return ChronoBankPlatform.deployed()
     }).then(function (instance) {
-      return instance.changeOwnership(SYMBOL2, chronoMint.address, {from: accounts[0]})
+      return instance.changeOwnership(SYMBOL2, assetsManager.address, {from: accounts[0]})
     }).then(function () {
       return Rewards.deployed()
     }).then(function (instance) {
@@ -327,10 +329,10 @@ return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, Prox
       return instance.init(UserStorage.address, ChronoBankAssetProxy.address)
     }).then(function () {
       return timeHolder.addListener(rewards.address)
-    }).then(function() {
-      return erc20Manager.addToken(timeProxyContract.address,'','TIME','',8,'0x0','0x0', {from: accounts[0]})
-    }).then(function () {
-      return erc20Manager.addToken(lhProxyContract.address,'','LHT','',8,'0x0','0x0',  {from: accounts[0]})
+  //  }).then(function() {
+  //    return erc20Manager.addToken(timeProxyContract.address,'','TIME','',8,'0x0','0x0', {from: accounts[0]})
+  //  }).then(function () {
+  //    return erc20Manager.addToken(lhProxyContract.address,'','LHT','',8,'0x0','0x0',  {from: accounts[0]})
     }).then(function(instance) {
       //web3.eth.sendTransaction({to: Exchange.address, value: BALANCE_ETH, from: accounts[0]});
       done();
@@ -377,18 +379,6 @@ return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, Prox
       });
     });
 
-    it("can show all Asset contracts", function() {
-      return erc20Manager.getTokenAddresses.call().then(function(r) {
-        assert.equal(r.length,2);
-      });
-    });
-
-    it("can show all System contracts", function() {
-      return contractsManager.getContractAddresses.call().then(function(r) {
-        assert.equal(r.length,4);
-      });
-    });
-
     it("can issue new Asset", function() {
       return assetsManager.createAsset.call('TEST','TEST','TEST',1000000,2,true,false).then(function(r) {
         console.log(r);
@@ -396,7 +386,6 @@ return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, Prox
           from: accounts[0],
           gas: 3000000
         }).then(function(tx) {
-          console.log(tx);
           return ChronoBankAssetProxy.at(r).then(function(instance) {
             return instance.totalSupply().then(function(r) {
               console.log(r);
@@ -404,6 +393,45 @@ return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, Prox
             });
           });
         });
+      });
+    });
+
+    it("allow add TIME Asset", function() {
+      return assetsManager.addAsset.call(timeProxyContract.address,'TIME', owner).then(function(r) {
+        console.log(r);
+        return assetsManager.addAsset(timeProxyContract.address,'TIME', owner, {
+          from: accounts[0],
+          gas: 3000000
+        }).then(function(tx) {
+          console.log(tx);
+          return assetsManager.getAssets.call().then(function(r) {
+            console.log(r);
+            assert.equal(r.length,2);
+          });
+        });
+      });
+    });
+
+    it("allow add LHT Asset", function() {
+      return assetsManager.addAsset.call(lhProxyContract.address,'LHT', chronoMint.address).then(function(r) {
+        console.log(r);
+        return assetsManager.addAsset(lhProxyContract.address,'LHT', chronoMint.address, {
+          from: accounts[0],
+          gas: 3000000
+        }).then(function(tx) {
+          console.log(tx);
+          return assetsManager.getAssets.call().then(function(r) {
+            console.log(r);
+            assert.equal(r.length,3);
+          });
+        });
+      });
+    });
+
+    it("can show all Asset contracts", function() {
+      return erc20Manager.getTokenAddresses.call().then(function(r) {
+	console.log(r);
+        assert.equal(r.length,3);
       });
     });
 
@@ -502,14 +530,16 @@ return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, Prox
         bytes32("www.ru"),
         1000,
         bytes32fromBase58("QmTeW79w7QQ6Npa3b1d5tANreCDxF2iDaAPsDvW6KtLmfB"),
-        unix
+        unix,
+	bytes32('LHT')
       ).then(function(r){
         return chronoMint.addLOC(
           bytes32("Bob's Hard Workers"),
           bytes32("www.ru"),
           1000,
           bytes32fromBase58("QmTeW79w7QQ6Npa3b1d5tANreCDxF2iDaAPsDvW6KtLmfB"),
-          unix,{
+          unix,
+	  bytes32('LHT'),{
             from: accounts[0],
             gas: 3000000
           }
@@ -884,7 +914,8 @@ return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, Prox
         bytes32("www.ru"),
         1000000,
         bytes32fromBase58("QmTeW79w7QQ6Npa3b1d5tANreCDxF2iDaAPsDvW6KtLmfB"),
-        unix
+        unix,
+	bytes32('LHT')
       ).then(function (r) {
         return chronoMint.getLOCById.call(0).then(function (r) {
           assert.equal(r[6], Status.maintenance);
@@ -986,27 +1017,27 @@ return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, Prox
     });
 
     it("should show 200 TIME balance", function () {
-      return chronoMint.getBalance.call('TIME').then(function (r) {
+      return assetsManager.getAssetBalance.call(bytes32('TIME')).then(function (r) {
         assert.equal(r, 200000000000);
       });
     });
 
     it("should not be abble to reIssue 5000 more TIME", function () {
-      return chronoMint.reissueAsset.call('TIME', 5000, 0x10, {from: accounts[0]}).then((r) => {
+      return assetsManager.reissueAsset.call(bytes32('TIME'), 5000, 0x10, {from: accounts[0]}).then((r) => {
         assert.isNotOk(r);
       })
         ;
     });
 
     it("should show 200 TIME balance", function () {
-      return chronoMint.getBalance.call('TIME').then(function (r) {
+      return assetsManager.getAssetBalance.call(bytes32('TIME')).then(function (r) {
         assert.equal(r, 200000000000);
       });
     });
 
-    it("ChronoMint should be able to send 100 TIME to owner", function () {
-      return chronoMint.sendAsset.call('TIME', owner, 100).then(function (r) {
-        return chronoMint.sendAsset('TIME', owner, 100, {
+    it("should be able to send 100 TIME to owner", function () {
+      return assetsManager.sendAsset.call(bytes32('TIME'), owner, 100).then(function (r) {
+        return assetsManager.sendAsset(bytes32('TIME'), owner, 100, {
           from: accounts[0],
           gas: 3000000
         }).then(function () {
@@ -1021,25 +1052,25 @@ return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, Prox
       });
     });
 
-    it("ChronoMint should be able to send 1000 TIME to msg.sender", function () {
-      return chronoMint.sendTime({from: owner2, gas: 3000000}).then(function () {
+    it("should be able to send 1000 TIME to msg.sender", function () {
+      return assetsManager.sendTime({from: owner2, gas: 3000000}).then(function () {
         return timeProxyContract.balanceOf.call(owner2).then(function (r) {
           assert.equal(r, 1000000000);
         });
       });
     });
 
-    it("ChronoMint shouldn't be able to send 1000 TIME to msg.sender twice", function () {
-      return chronoMint.sendTime({from: owner2, gas: 3000000}).then(function () {
+    it("shouldn't be able to send 1000 TIME to msg.sender twice", function () {
+      return assetsManager.sendTime({from: owner2, gas: 3000000}).then(function () {
         return timeProxyContract.balanceOf.call(owner2).then(function (r) {
           assert.equal(r, 1000000000);
         });
       });
     });
 
-    it("ChronoMint should be able to send 100 TIME to owner1", function () {
-      return chronoMint.sendAsset.call('TIME', owner1, 100).then(function (r) {
-        return chronoMint.sendAsset('TIME', owner1, 100, {
+    it("should be able to send 100 TIME to owner1", function () {
+      return assetsManager.sendAsset.call(bytes32('TIME'), owner1, 100).then(function (r) {
+        return assetsManager.sendAsset(bytes32('TIME'), owner1, 100, {
           from: accounts[0],
           gas: 3000000
         }).then(function () {
@@ -1065,7 +1096,7 @@ return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, Prox
     });
 
     it("should show 0 LHT balance", function () {
-      return chronoMint.getBalance.call('LHT').then(function (r) {
+      return assetsManager.getAssetBalance.call(bytes32('LHT')).then(function (r) {
         assert.equal(r, 0);
       });
     });
@@ -1076,14 +1107,8 @@ return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, Prox
       });
     });
 
-    it("can provide LH Token platform address.", function() {
-      return contractsManager.getContractAddressByType.call(9).then(function(r) {
-        assert.equal(r,chronoBankPlatform.address);
-      });
-    });
-
     it("shouldn't be abble to Issue 1100000 LHT for LOC according to issueLimit", function () {
-      return chronoMint.reissueAsset('LHT', 1100000, bytes32("Bob's Hard Workers"), {
+      return chronoMint.reissueAsset(1100000, bytes32("Bob's Hard Workers"), {
         from: owner,
         gas: 3000000
       }).then((txHash) => {
@@ -1095,7 +1120,8 @@ return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, Prox
           return shareable.confirm(conf_sign, {from: owner1}).then(function () {
             return shareable.confirm(conf_sign, {from: owner2}).then(function () {
               return shareable.confirm(conf_sign, {from: owner3}).then(function () {
-                return lhProxyContract.balanceOf.call(chronoMint.address).then(function (r2) {
+		                    return shareable.confirm(conf_sign, {from: owner5}).then(function () {
+                return lhProxyContract.balanceOf.call(assetsManager.address).then(function (r2) {
                   assert.equal(r2, 0);
                 });
               });
@@ -1104,9 +1130,10 @@ return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, Prox
         });
       });
     });
+    });
 
     it("should be abble to Issue 1000000 LHT for LOC according to issueLimit", function () {
-      return chronoMint.reissueAsset('LHT', 1000000, bytes32("Bob's Hard Workers"), {
+      return chronoMint.reissueAsset(1000000, bytes32("Bob's Hard Workers"), {
         from: owner,
         gas: 3000000
       }).then(function (txHash) {
@@ -1118,7 +1145,7 @@ return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, Prox
           return shareable.confirm(conf_sign, {from: owner1}).then(function () {
             return shareable.confirm(conf_sign, {from: owner2}).then(function () {
               return shareable.confirm(conf_sign, {from: owner3}).then(function () {
-                return lhProxyContract.balanceOf.call(chronoMint.address).then(function (r2) {
+                return lhProxyContract.balanceOf.call(assetsManager.address).then(function (r2) {
                   console.log(r2);
                   assert.equal(r2, 1000000);
                 });
@@ -1130,7 +1157,7 @@ return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, Prox
     });
 
     it("shouldn't be abble to Issue 1000 LHT for LOC according to issued and issueLimit", function () {
-      return chronoMint.reissueAsset('LHT', 1000, bytes32("Bob's Hard Workers"), {
+      return chronoMint.reissueAsset(1000, bytes32("Bob's Hard Workers"), {
         from: owner,
         gas: 3000000
       }).then(function (txHash) {
@@ -1142,7 +1169,7 @@ return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, Prox
           return shareable.confirm(conf_sign, {from: owner1}).then(function () {
             return shareable.confirm(conf_sign, {from: owner2}).then(function () {
               return shareable.confirm(conf_sign, {from: owner3}).then(function () {
-                return lhProxyContract.balanceOf.call(chronoMint.address).then(function (r2) {
+                return lhProxyContract.balanceOf.call(assetsManager.address).then(function (r2) {
                   assert.equal(r2, 1000000);
                 });
               });
@@ -1165,7 +1192,7 @@ return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, Prox
     });
 
     it("should be abble to Revoke 500000 LHT for LOC according to issueLimit", function () {
-      return chronoMint.revokeAsset('LHT', 500000, bytes32("Bob's Hard Workers"), {
+      return chronoMint.revokeAsset(500000, bytes32("Bob's Hard Workers"), {
         from: owner,
         gas: 3000000
       }).then(function (txHash) {
@@ -1177,7 +1204,7 @@ return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, Prox
           return shareable.confirm(conf_sign, {from: owner1}).then(function () {
             return shareable.confirm(conf_sign, {from: owner2}).then(function () {
               return shareable.confirm(conf_sign, {from: owner3}).then(function () {
-                return lhProxyContract.balanceOf.call(chronoMint.address).then(function (r2) {
+                return lhProxyContract.balanceOf.call(assetsManager.address).then(function (r2) {
                   assert.equal(r2, 500000);
                 });
               });
@@ -1195,7 +1222,7 @@ return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, Prox
     });
 
     it("should be able to send 500000 LHT to owner to produce some fees", function () {
-      return chronoMint.sendAsset('LHT', owner2, 500000, {
+      return chronoMint.sendAsset(bytes32('LHT'), owner2, 495049, {
         from: owner,
         gas: 3000000
       }).then(function () {

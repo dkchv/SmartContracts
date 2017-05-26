@@ -6,6 +6,7 @@ import "./ContractsManagerInterface.sol";
 import "./ChronoBankAssetWithFee.sol";
 import "./ChronoBankPlatformInterface.sol";
 import "./ChronoBankAssetProxyInterface.sol";
+import "./ERC20Interface.sol";
 import "./OwnedInterface.sol";
 
 contract ProxyFactory {
@@ -18,8 +19,17 @@ contract AssetsManager is Managed {
     address contractsManager;
     address proxyFactory;
 
-    bytes32[] assetSymbols;
-    mapping(address => address[]) owners;
+    bytes32[] public assetSymbols;
+    mapping(bytes32 => address) assets;
+    mapping(address => mapping(address => bool)) owners;
+
+    mapping (address => bool) timeHolder;
+
+    modifier onlyAssetOwner(bytes32 _symbol) {
+        if (owners[assets[_symbol]][msg.sender]) {
+            _;
+        }
+    }
 
     function init(address _platform, address _contractsManager, address _proxyFactory) returns(bool) {
         if (platform != 0x0) {
@@ -31,6 +41,17 @@ contract AssetsManager is Managed {
         return true;
     }
 
+    // this method is implemented only for test purposes
+    function sendTime() returns (bool) {
+        if(!timeHolder[msg.sender] && assets[bytes32('TIME')] != address(0)) {
+            timeHolder[msg.sender] = true;
+            return ERC20Interface(assets[bytes32('TIME')]).transfer(msg.sender, 1000000000);
+        }
+        else {
+            return false;
+        }
+    }
+
     function claimPlatformOwnership() returns (bool) {
         if (OwnedInterface(platform).claimContractOwnership()) {
             return true;
@@ -39,8 +60,42 @@ contract AssetsManager is Managed {
         return false;
     }
 
-    function addAsset(address asset) {
+    function getAssetBalance(bytes32 symbol) constant returns (uint) {
+        return ERC20Interface(assets[symbol]).balanceOf(this);
+    }
 
+    function getAssets() constant returns(bytes32[]) {
+        return assetSymbols;
+    }
+
+    function sendAsset(bytes32 _symbol, address _to, uint _value) onlyAssetOwner(_symbol) returns (bool) {
+        return ERC20Interface(assets[_symbol]).transfer(_to, _value);
+    }
+
+    function reissueAsset(bytes32 _symbol, uint _value) onlyAssetOwner(_symbol) returns(bool) {
+        return ChronoBankPlatformInterface(platform).reissueAsset(_symbol, _value);
+    }
+
+    function revokeAsset(bytes32 _symbol, uint _value) onlyAssetOwner(_symbol) returns(bool) {
+        return ChronoBankPlatformInterface(platform).revokeAsset(_symbol, _value);
+    }
+
+    function addAsset(address asset, bytes32 _symbol, address owner) returns (bool) {
+        if(ChronoBankAssetProxy(asset).chronoBankPlatform() == platform) {
+            if(ChronoBankPlatformInterface(platform).proxies(_symbol) == asset) {
+                if(ChronoBankPlatformInterface(platform).isOwner(this,_symbol)) {
+                    uint8 decimals = ChronoBankPlatformInterface(platform).baseUnit(_symbol);
+                    if(!ERC20ManagerInterface(contractsManager).addToken(asset,'',bytes32ToString(_symbol),'',decimals,bytes32(0), bytes32(0))) {
+
+                    }
+                    assets[_symbol] = asset;
+                    assetSymbols.push(_symbol);
+                    owners[asset][owner] = true;
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     function createAsset(bytes32 symbol, string name, string description, uint value, uint8 decimals, bool isMint, bool withFee) returns (address) {
@@ -60,12 +115,15 @@ contract AssetsManager is Managed {
             ChronoBankAssetProxy(token).init(platform, smbl, name);
             ChronoBankAssetProxy(token).proposeUpgrade(asset);
             ChronoBankAsset(asset).init(ChronoBankAssetProxyInterface(token));
+            if(!ERC20ManagerInterface(contractsManager).addToken(token, name, smbl, '', decimals, bytes32(0), bytes32(0))) {
+
+            }
+            assets[symbol] = token;
             assetSymbols.push(symbol);
-            ERC20ManagerInterface(contractsManager).addToken(token, name, smbl, '', decimals, bytes32(0), bytes32(0));
-            owners[token].push(msg.sender);
+            owners[token][msg.sender] = true;
             return token;
         }
-        return token;
+        return 0;
     }
 
     function bytes32ToString(bytes32 x) constant returns (string) {

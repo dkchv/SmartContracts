@@ -2,7 +2,7 @@ pragma solidity ^0.4.8;
 
 import "./Managed.sol";
 import "./ContractsManager.sol";
-import "./ChronoBankPlatformInterface.sol";
+import "./AssetsManagerInterface.sol";
 import "./ERC20Interface.sol";
 import "./ERC20ManagerInterface.sol";
 import "./FeeInterface.sol";
@@ -21,7 +21,6 @@ contract Emitter {
 
 contract ChronoMint is Managed {
     address contractsManager;
-    mapping (address => bool) timeHolder;
     mapping (bytes32 => LOC) offeringCompanies;
     bytes32[] public offeringCompaniesNames;
 
@@ -36,6 +35,7 @@ contract ChronoMint is Managed {
     uint expDate;
     Status status;
     uint securityPercentage;
+    bytes32 currency;
     }
 
     function init(address _userStorage, address _shareable, address _contractsManager) returns(bool) {
@@ -78,21 +78,6 @@ contract ChronoMint is Managed {
         return true;
     }
 
-    // this method is implemented only for test purposes
-    function sendTime() returns (bool) {
-        if(!timeHolder[msg.sender]) {
-            timeHolder[msg.sender] = true;
-            return ERC20Interface(ERC20ManagerInterface(ContractsManager(contractsManager).contractByType(uint(ContractsManager.ContractType.ERC20Manager))).getTokenAddressBySymbol('TIME')).transfer(msg.sender, 1000000000);
-        }
-        else {
-            return false;
-        }
-    }
-
-    function getBalance(string symbol) constant returns (uint) {
-        return ERC20Interface(ERC20ManagerInterface(ContractsManager(contractsManager).contractByType(uint(ContractsManager.ContractType.ERC20Manager))).getTokenAddressBySymbol(symbol)).balanceOf(this);
-    }
-
     modifier locExists(bytes32 _locName) {
         if (offeringCompanies[_locName].name != bytes32(0)) {
             _;
@@ -105,44 +90,29 @@ contract ChronoMint is Managed {
         }
     }
 
-    function sendAsset(string symbol, address _to, uint _value) onlyAuthorized() returns (bool) {
-        if(sha3(symbol) == sha3('LHT')) {
-            uint feePercent = FeeInterface(ChronoBankAssetProxyInterface(ERC20ManagerInterface(ContractsManager(contractsManager).contractByType(uint(ContractsManager.ContractType.ERC20Manager))).getTokenAddressBySymbol(symbol)).getLatestVersion()).feePercent();
-            uint amount = (_value * 10000)/(10000 + feePercent);
-            return ERC20Interface(ERC20ManagerInterface(ContractsManager(contractsManager).contractByType(uint(ContractsManager.ContractType.ERC20Manager))).getTokenAddressBySymbol(symbol)).transfer(_to, amount);
-        }
-        return ERC20Interface(ERC20ManagerInterface(ContractsManager(contractsManager).contractByType(uint(ContractsManager.ContractType.ERC20Manager))).getTokenAddressBySymbol(symbol)).transfer(_to, _value);
+    function sendAsset(bytes32 _symbol, address _to, uint _value) onlyAuthorized returns (bool) {
+        return AssetsManagerInterface(ContractsManager(contractsManager).contractByType(uint(ContractsManager.ContractType.AssetsManager))).sendAsset(_symbol, _to, _value);
     }
 
-    function reissueAsset(bytes32 symbol, uint _value, bytes32 _locName) multisig returns (bool) {
-        if(symbol != 0x0) {
-            address platform = ContractsManager(contractsManager).contractByType(uint(ContractsManager.ContractType.LH));
-            if (platform != 0x0 && ChronoBankPlatformInterface(platform).isReissuable(symbol)) {
-                uint issued = offeringCompanies[_locName].issued;
-                if(_value <= offeringCompanies[_locName].issueLimit - issued) {
-                    if(ChronoBankPlatformInterface(platform).reissueAsset(symbol, _value)) {
-                        offeringCompanies[_locName].issued = issued + _value;
-                        eventsHistory.reissue(_value,_locName);
-                        return true;
-                    }
-                }
+    function reissueAsset(uint _value, bytes32 _locName) multisig returns (bool) {
+        uint issued = offeringCompanies[_locName].issued;
+        if(_value <= offeringCompanies[_locName].issueLimit - issued) {
+            if(AssetsManagerInterface(ContractsManager(contractsManager).contractByType(uint(ContractsManager.ContractType.AssetsManager))).reissueAsset(offeringCompanies[_locName].currency, _value)) {
+                offeringCompanies[_locName].issued = issued + _value;
+                eventsHistory.reissue(_value,_locName);
+                return true;
             }
         }
         return false;
     }
 
-    function revokeAsset(bytes32 symbol, uint _value, bytes32 _locName) multisig returns (bool) {
-        if(symbol != 0x0) {
-            address platform = ContractsManager(contractsManager).contractByType(uint(ContractsManager.ContractType.LH));
-            if (platform != 0x0 && ChronoBankPlatformInterface(platform).isReissuable(symbol)) {
-                uint issued = offeringCompanies[_locName].issued;
-                if(_value <= issued) {
-                    if(ChronoBankPlatformInterface(platform).revokeAsset(symbol, _value)) {
-                        offeringCompanies[_locName].issued = issued - _value;
-                        eventsHistory.reissue(_value, _locName);
-                        return true;
-                    }
-                }
+    function revokeAsset(uint _value, bytes32 _locName) multisig returns (bool) {
+        uint issued = offeringCompanies[_locName].issued;
+        if(_value <= issued) {
+            if(AssetsManagerInterface(ContractsManager(contractsManager).contractByType(uint(ContractsManager.ContractType.AssetsManager))).revokeAsset(offeringCompanies[_locName].currency, _value)) {
+                offeringCompanies[_locName].issued = issued - _value;
+                eventsHistory.reissue(_value, _locName);
+                return true;
             }
         }
         return false;
@@ -161,8 +131,8 @@ contract ChronoMint is Managed {
         return true;
     }
 
-    function addLOC(bytes32 _name, bytes32 _website, uint _issueLimit, bytes32 _publishedHash, uint _expDate) onlyAuthorized() locDoesNotExist(_name) returns(uint) {
-        offeringCompanies[_name] = LOC({name: _name,website:_website,issued:0,issueLimit:_issueLimit,publishedHash:_publishedHash,expDate:_expDate, status:Status.maintenance,securityPercentage:0});
+    function addLOC(bytes32 _name, bytes32 _website, uint _issueLimit, bytes32 _publishedHash, uint _expDate, bytes32 _currency) onlyAuthorized() locDoesNotExist(_name) returns(uint) {
+        offeringCompanies[_name] = LOC({name: _name,website:_website,issued:0,issueLimit:_issueLimit,publishedHash:_publishedHash,expDate:_expDate, status:Status.maintenance,securityPercentage:0, currency:_currency});
         offeringCompaniesNames.push(_name);
         eventsHistory.newLOC(_name);
         return offeringCompaniesNames.length;

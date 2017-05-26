@@ -76,8 +76,7 @@ contract ERC20Manager is Owned {
     bytes32 _ipfsHash,
     bytes32 _swarmHash)
     public
-    onlyContractOwner
-    tokenDoesNotExist(_token)
+    tokenDoesNotExist(_token) returns(bool)
     {
         Asset(_token).totalSupply();
         tokens[_token] = TokenMetadata({
@@ -100,6 +99,7 @@ contract ERC20Manager is Owned {
         _ipfsHash,
         _swarmHash
         );
+        return true;
     }
 
     /// @dev Allows owner to remove an existing token from the registry.
