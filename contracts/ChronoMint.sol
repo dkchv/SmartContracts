@@ -36,6 +36,7 @@ contract ChronoMint is Managed {
     Status status;
     uint securityPercentage;
     bytes32 currency;
+    uint createDate;
     }
 
     function init(address _userStorage, address _shareable, address _contractsManager) returns(bool) {
@@ -132,7 +133,7 @@ contract ChronoMint is Managed {
     }
 
     function addLOC(bytes32 _name, bytes32 _website, uint _issueLimit, bytes32 _publishedHash, uint _expDate, bytes32 _currency) onlyAuthorized() locDoesNotExist(_name) returns(uint) {
-        offeringCompanies[_name] = LOC({name: _name,website:_website,issued:0,issueLimit:_issueLimit,publishedHash:_publishedHash,expDate:_expDate, status:Status.maintenance,securityPercentage:0, currency:_currency});
+        offeringCompanies[_name] = LOC({name: _name,website:_website,issued:0,issueLimit:_issueLimit,publishedHash:_publishedHash,expDate:_expDate, status:Status.maintenance,securityPercentage:0, currency:_currency, createDate:now});
         offeringCompaniesNames.push(_name);
         eventsHistory.newLOC(_name);
         return offeringCompaniesNames.length;
