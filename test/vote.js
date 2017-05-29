@@ -6,14 +6,17 @@ var ChronoBankAssetWithFeeProxy = artifacts.require("./ChronoBankAssetWithFeePro
 var ChronoBankAsset = artifacts.require("./ChronoBankAsset.sol");
 var ChronoBankAssetWithFee = artifacts.require("./ChronoBankAssetWithFee.sol");
 var Exchange = artifacts.require("./Exchange.sol");
+var ERC20Manager = artifacts.require("./ERC20Manager.sol");
 var Rewards = artifacts.require("./Rewards.sol");
 var ChronoMint = artifacts.require("./ChronoMint.sol");
 var ContractsManager = artifacts.require("./ContractsManager.sol");
+var ProxyFactory = artifacts.require("./ProxyFactory.sol");
 var LOC = artifacts.require("./LOC.sol");
 var Shareable = artifacts.require("./PendingManager.sol");
 var TimeHolder = artifacts.require("./TimeHolder.sol");
 var UserStorage = artifacts.require("./UserStorage.sol");
 var UserManager = artifacts.require("./UserManager.sol");
+var AssetsManager = artifacts.require("./AssetsManager");
 var Vote = artifacts.require("./Vote.sol");
 var Reverter = require('./helpers/reverter');
 var bytes32 = require('./helpers/bytes32');
@@ -35,8 +38,10 @@ contract('Vote', function(accounts) {
   var chronoBankPlatformEmitter;
   var contractsManager;
   var eventsHistory;
+  var erc20Manager;
   var rewardContract;
   var platform;
+  var assetsManager;
   var timeContract;
   var lhContract;
   var timeProxyContract;
@@ -99,10 +104,10 @@ contract('Vote', function(accounts) {
   before('setup', function(done) {
     UserStorage.deployed().then(function (instance) {
       return instance.addOwner(UserManager.address)
-    }).then(function () {
-      return ChronoMint.deployed()
-    }).then(function (instance) {
-      return instance.init(UserStorage.address, Shareable.address, ContractsManager.address)
+ //   }).then(function () {
+ //     return ChronoMint.deployed()
+ //   }).then(function (instance) {
+ //     return instance.init(UserStorage.address, Shareable.address, ContractsManager.address)
     }).then(function () {
       return ContractsManager.deployed()
     }).then(function (instance) {
@@ -136,6 +141,9 @@ contract('Vote', function(accounts) {
       return ChronoBankAssetWithFeeProxy.deployed()
     }).then(function(instance) {
       lhProxyContract = instance;
+      return ERC20Manager.deployed()
+    }).then(function (instance) {
+      erc20Manager = instance;
       return ChronoBankPlatform.deployed()
     }).then(function (instance) {
       chronoBankPlatform = instance;
@@ -152,6 +160,11 @@ contract('Vote', function(accounts) {
     }).then(function (instance) {
       timeHolder = instance;
       return instance.init(UserStorage.address, ChronoBankAssetProxy.address)
+    }).then(function () {
+      return AssetsManager.deployed()
+    }).then(function (instance) {
+      assetsManager = instance;
+      return assetsManager.init(platform.address, erc20Manager.address, ProxyFactory.address)
     }).then(function () {
       return timeHolder.addListener(vote.address)
     }).then(function () {
@@ -213,7 +226,7 @@ contract('Vote', function(accounts) {
       return ChronoBankAssetProxy.deployed()
     }).then(function (instance) {
       return instance.init(ChronoBankPlatform.address, SYMBOL, NAME, {from: accounts[0]})
-    }).then(function (r) {
+    }).then(function () {
       return ChronoBankAssetProxy.deployed()
     }).then(function (instance) {
       return instance.proposeUpgrade(ChronoBankAsset.address, {from: accounts[0]})
@@ -224,11 +237,13 @@ contract('Vote', function(accounts) {
     }).then(function (r) {
       return ChronoBankAssetProxy.deployed()
     }).then(function (instance) {
-      return instance.transfer(ContractsManager.address, 10000000, {from: accounts[0]})
+      return instance.transfer(assetsManager.address, 10000000, {from: accounts[0]})
     }).then(function (r) {
-      return chronoBankPlatform.changeOwnership(SYMBOL, contractsManager.address, {from: accounts[0]})
-    }).then(function (r) {
-      return chronoBankPlatform.issueAsset(SYMBOL2, 0, NAME2, DESCRIPTION2, BASE_UNIT, IS_REISSUABLE, {
+      return chronoBankPlatform.changeOwnership(SYMBOL, assetsManager.address, {from: accounts[0]})
+    }).then(function () {
+      return assetsManager.addAsset(timeProxyContract.address,SYMBOL, owner)
+      /*   }).then(function (r) {
+     return chronoBankPlatform.issueAsset(SYMBOL2, 0, NAME2, DESCRIPTION2, BASE_UNIT, IS_REISSUABLE, {
         from: accounts[0],
         gas: 3000000
       })
@@ -249,33 +264,33 @@ contract('Vote', function(accounts) {
     }).then(function () {
       return ChronoBankPlatform.deployed()
     }).then(function (instance) {
-      return instance.changeOwnership(SYMBOL2, ContractsManager.address, {from: accounts[0]})
+      return instance.changeOwnership(SYMBOL2, assetsManager.address, {from: accounts[0]})
     }).then(function () {
       return chronoBankPlatform.changeContractOwnership(ContractsManager.address, {from: accounts[0]})
     }).then(function () {
-      return contractsManager.claimContractOwnership(ChronoBankPlatform.address, false, {from: accounts[0]})
+      return contractsManager.claimContractOwnership(ChronoBankPlatform.address, 8, {from: accounts[0]})
+    }).then(function () {*/
+//      return Exchange.deployed()
+ //   }).then(function (instance) {
+ //     exchange = instance;
+ //     return exchange.init(ChronoBankAssetWithFeeProxy.address)
+ //   }).then(function () {
+//      return exchange.changeContractOwnership(contractsManager.address, {from: accounts[0]})
+ //   }).then(function () {
+ //     return contractsManager.claimContractOwnership(exchange.address, 4, {from: accounts[0]})
     }).then(function () {
-      return Exchange.deployed()
-    }).then(function (instance) {
-      exchange = instance;
-      return exchange.init(ChronoBankAssetWithFeeProxy.address)
-    }).then(function () {
-      return exchange.changeContractOwnership(contractsManager.address, {from: accounts[0]})
-    }).then(function () {
-      return contractsManager.claimContractOwnership(exchange.address, false, {from: accounts[0]})
-    }).then(function () {
-      return Rewards.deployed()
-    }).then(function (instance) {
-      rewards = instance;
-      return rewards.init(ChronoBankAssetProxy.address, 0)
-    }).then(function () {
-      return contractsManager.setOtherAddress(rewards.address, {from: accounts[0]})
-    }).then(function () {
-      return contractsManager.setAddress(ChronoBankAssetProxy.address, {from: accounts[0]})
-    }).then(function () {
-      return contractsManager.setAddress(ChronoBankAssetWithFeeProxy.address, {from: accounts[0]})
-    }).then(function(instance) {
-      web3.eth.sendTransaction({to: Exchange.address, value: BALANCE_ETH, from: accounts[0]});
+ //     return Rewards.deployed()
+ //   }).then(function (instance) {
+ //     rewards = instance;
+ //     return rewards.init(ChronoBankAssetProxy.address, 0)
+ //   }).then(function () {
+ //     return contractsManager.setOtherAddress(rewards.address, {from: accounts[0]})
+ //   }).then(function () {
+ //     return contractsManager.setAddress(ChronoBankAssetProxy.address, {from: accounts[0]})
+ //   }).then(function () {
+ //     return contractsManager.setAddress(ChronoBankAssetWithFeeProxy.address, {from: accounts[0]})
+ //   }).then(function(instance) {
+ //     web3.eth.sendTransaction({to: Exchange.address, value: BALANCE_ETH, from: accounts[0]});
       done();
     }).catch(function (e) { console.log(e); });
   });
@@ -315,9 +330,9 @@ contract('Vote', function(accounts) {
 
   context("owner shares deposit", function(){
 
-    it("ChronoMint should be able to send 100 TIME to owner", function() {
-      return contractsManager.sendAsset.call(1,owner,50000).then(function(r) {
-        return contractsManager.sendAsset(1,owner,50000,{from: accounts[0], gas: 3000000}).then(function() {
+    it("AssetsManager should be able to send 100 TIME to owner", function() {
+      return assetsManager.sendAsset.call(bytes32(SYMBOL),owner,50000).then(function(r) {
+        return assetsManager.sendAsset(bytes32(SYMBOL),owner,50000,{from: accounts[0], gas: 3000000}).then(function() {
           assert.isOk(r);
         });
       });
@@ -519,8 +534,8 @@ contract('Vote', function(accounts) {
   context("owner1 shares deposit and voting", function() {
 
     it("ChronoMint should be able to send 50 TIME to owner1", function() {
-      return contractsManager.sendAsset.call(1,owner1,50).then(function(r) {
-        return contractsManager.sendAsset(1,owner1,50,{from: accounts[0], gas: 3000000}).then(function() {
+      return assetsManager.sendAsset.call(bytes32(SYMBOL),owner1,50).then(function(r) {
+        return assetsManager.sendAsset(bytes32(SYMBOL),owner1,50,{from: accounts[0], gas: 3000000}).then(function() {
           assert.isOk(r)
         })
       })

@@ -5,6 +5,7 @@ import "./UserStorage.sol";
 
 contract Managed {
     address userStorage;
+    address contractsManager;
     address shareable;
 
     //event Exec(bytes32 hash);

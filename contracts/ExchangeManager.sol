@@ -71,13 +71,16 @@ contract ExchangeManager is Managed {
         return true;
     }
 
-    function createExchange(string _symbol) returns(uint) {
+    function createExchange(string _symbol, bool _useTicker) returns(uint) {
         address tokenAddr = ERC20Manager(ContractsManager(contractsManager).contractAddresses(uint(ContractsManager.ContractType.ERC20Manager))).getTokenAddressBySymbol(_symbol);
-        if(tokenAddr != 0x0) {
+        address rewards = ContractsManager(contractsManager).contractAddresses(uint(ContractsManager.ContractType.Rewards));
+        if(tokenAddr != 0x0 && rewards !=  0x0) {
             address exchangeAddr = new Exchange();
-            //address tickerAddr = new KrakenPriceTicker();
             address tickerAddr;
-            Exchange(exchangeAddr).init(Asset(tokenAddr),0x0,tickerAddr,10);
+            if(_useTicker) {
+                //address tickerAddr = new KrakenPriceTicker();
+            }
+            Exchange(exchangeAddr).init(Asset(tokenAddr),rewards,tickerAddr,10);
             exchanges.push(exchangeAddr);
             owners[exchangeAddr] = msg.sender;
             return exchanges.length;

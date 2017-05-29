@@ -52,7 +52,7 @@ contract AssetsManager is Managed {
         }
     }
 
-    function claimPlatformOwnership() returns (bool) {
+    function claimPlatformOwnership() onlyAuthorized returns (bool) {
         if (OwnedInterface(platform).claimContractOwnership()) {
             return true;
         }
