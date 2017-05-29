@@ -28,10 +28,10 @@ contract Exchange is Owned {
     bool public isActive;
 
     // Price in wei at which exchange buys tokens.
-    uint public buyPrice;
+    uint public buyPrice = 1;
 
     // Price in wei at which exchange sells tokens.
-    uint public sellPrice;
+    uint public sellPrice = 2;
 
     // Fee value for operations 10000 is 0.01.
     uint public feePercent = 10000;
@@ -66,6 +66,9 @@ contract Exchange is Owned {
         if (address(asset) != 0x0) {
             return false;
         }
+        if (rewards != 0x0) {
+            return false;
+        }
         asset = _asset;
         rewards = _rewards;
         delegate = _delegate;
@@ -75,8 +78,9 @@ contract Exchange is Owned {
     }
 
     function setFee(uint _feePercent) internal returns(bool) {
-        if(feePercent < 1 || feePercent > 10000)
-        return false;
+        if(feePercent < 1 || feePercent > 10000) {
+            return false;
+        }
         feePercent = _feePercent;
         return true;
     }
