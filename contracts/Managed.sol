@@ -1,14 +1,12 @@
 pragma solidity ^0.4.8;
 
-import {PendingManager as Shareable} from "./PendingManager.sol";
-import "./UserStorage.sol";
+import {PendingManagerInterface as Shareable} from "./PendingManagerInterface.sol";
+import "./UserStorageInterface.sol";
 
 contract Managed {
     address userStorage;
     address contractsManager;
     address shareable;
-
-    //event Exec(bytes32 hash);
 
     modifier onlyAuthorized() {
         if (isAuthorized(msg.sender) || msg.sender == shareable) {
@@ -20,7 +18,6 @@ contract Managed {
         if (msg.sender != shareable) {
             bytes32 _r = sha3(msg.data);
             Shareable(shareable).addTx(_r, msg.data, this, msg.sender);
-            //Exec(_r);
         }
         else {
             _;
@@ -28,7 +25,7 @@ contract Managed {
     }
 
     function isAuthorized(address key) returns (bool) {
-        return UserStorage(userStorage).getCBE(key);
+        return UserStorageInterface(userStorage).getCBE(key);
     }
 
 }

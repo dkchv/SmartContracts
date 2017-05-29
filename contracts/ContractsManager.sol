@@ -38,7 +38,7 @@ contract ContractsManager is Managed {
     address[] public contractAddresses;
 
     mapping (address => ContractMetadata) contracts;
-    mapping (uint => address) public contractByType;
+    mapping (uint => address) contractByType;
 
     modifier contractExists(address _contract) {
         if (contracts[_contract].contractAddr != address(0)) {

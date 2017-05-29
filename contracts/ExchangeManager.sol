@@ -10,17 +10,21 @@ import {ContractsManagerInterface as ContractsManager} from "./ContractsManagerI
 contract ExchangeManager is Managed {
     address contractsManager;
     address[] public exchanges;
-    mapping(address => address) owners;
+    mapping(address => address[]) owners;
 
     //Exchanges APIs for rate tracking array
     //string[] public URLs;
     //mapping(bytes32 => bool) URLexsist;
 
+    event Test(address test);
+
     event exchangeRemoved(address user, address exchange);
 
     modifier onlyExchangeOwner(address _exchange) {
-        if (msg.sender == owners[_exchange]) {
-            _;
+        for(uint i=0;i<owners[_exchange].length;i++) {
+            if (owners[_exchange][i] == msg.sender) {
+                _;
+            }
         }
     }
 
@@ -39,9 +43,9 @@ contract ExchangeManager is Managed {
     function addExchange(address _exchange) returns(uint) {
         Exchange(_exchange).sellPrice;
         Exchange(_exchange).buyPrice;
-        if(owners[_exchange] == 0x0) {
+        if(owners[_exchange].length == 0) {
             exchanges.push(_exchange);
-            owners[_exchange] = msg.sender;
+            owners[_exchange].push(msg.sender);
             return exchanges.length;
         }
         return 0;
@@ -72,8 +76,12 @@ contract ExchangeManager is Managed {
     }
 
     function createExchange(string _symbol, bool _useTicker) returns(uint) {
-        address tokenAddr = ERC20Manager(ContractsManager(contractsManager).contractAddresses(uint(ContractsManager.ContractType.ERC20Manager))).getTokenAddressBySymbol(_symbol);
-        address rewards = ContractsManager(contractsManager).contractAddresses(uint(ContractsManager.ContractType.Rewards));
+        address _erc20Manager = ContractsManager(contractsManager).getContractAddressByType(ContractsManager.ContractType.ERC20Manager);
+        Test(_erc20Manager);
+        address tokenAddr = ERC20Manager(_erc20Manager).getTokenAddressBySymbol(_symbol);
+        Test(tokenAddr);
+        address rewards = ContractsManager(contractsManager).getContractAddressByType(ContractsManager.ContractType.Rewards);
+        Test(rewards);
         if(tokenAddr != 0x0 && rewards !=  0x0) {
             address exchangeAddr = new Exchange();
             address tickerAddr;
@@ -82,8 +90,37 @@ contract ExchangeManager is Managed {
             }
             Exchange(exchangeAddr).init(Asset(tokenAddr),rewards,tickerAddr,10);
             exchanges.push(exchangeAddr);
-            owners[exchangeAddr] = msg.sender;
+            owners[exchangeAddr].push(msg.sender);
             return exchanges.length;
         }
+        return 0;
+    }
+
+    function addExchangeOwner(address _exchange, address _owner) onlyExchangeOwner(_exchange) returns(bool) {
+        for(uint i=0;i<owners[_exchange].length;i++) {
+            if(owners[_exchange][i] == _owner) {
+                return false;
+            }
+        }
+        owners[_exchange].push(_owner);
+        return true;
+    }
+
+    function deleteExchangeOwner(address _exchange, address _owner) onlyExchangeOwner(_exchange) returns(bool) {
+        for(uint i=0;i<owners[_exchange].length;i++) {
+            if(owners[_exchange][i] == msg.sender) {
+                return false;
+            }
+            if(owners[_exchange][i] == _owner) {
+                owners[_exchange][i] = owners[_exchange][owners[_exchange].length-1];
+                owners[_exchange].length--;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function getExchangeOwners(address _exchange) returns (address[]) {
+        return owners[_exchange];
     }
 }

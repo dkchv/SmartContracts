@@ -1,6 +1,7 @@
 pragma solidity ^0.4.8;
 
 import "./Managed.sol";
+import "./UserStorage.sol";
 
 contract Emitter {
     function cbeUpdate(address key);
@@ -10,7 +11,6 @@ contract Emitter {
 }
 
 contract UserManager is Managed {
-
 
     function init(address _userStorage, address _shareable) returns (bool) {
         if (userStorage != 0x0) {

@@ -242,55 +242,7 @@ contract('Vote', function(accounts) {
       return chronoBankPlatform.changeOwnership(SYMBOL, assetsManager.address, {from: accounts[0]})
     }).then(function () {
       return assetsManager.addAsset(timeProxyContract.address,SYMBOL, owner)
-      /*   }).then(function (r) {
-     return chronoBankPlatform.issueAsset(SYMBOL2, 0, NAME2, DESCRIPTION2, BASE_UNIT, IS_REISSUABLE, {
-        from: accounts[0],
-        gas: 3000000
-      })
     }).then(function () {
-      return chronoBankPlatform.setProxy(ChronoBankAssetWithFeeProxy.address, SYMBOL2, {from: accounts[0]})
-    }).then(function () {
-      return ChronoBankAssetWithFeeProxy.deployed()
-    }).then(function (instance) {
-      return instance.init(ChronoBankPlatform.address, SYMBOL2, NAME2, {from: accounts[0]})
-    }).then(function () {
-      return ChronoBankAssetWithFeeProxy.deployed()
-    }).then(function (instance) {
-      return instance.proposeUpgrade(ChronoBankAssetWithFee.address, {from: accounts[0]})
-    }).then(function () {
-      return ChronoBankAssetWithFee.deployed()
-    }).then(function (instance) {
-      return instance.init(ChronoBankAssetWithFeeProxy.address, {from: accounts[0]})
-    }).then(function () {
-      return ChronoBankPlatform.deployed()
-    }).then(function (instance) {
-      return instance.changeOwnership(SYMBOL2, assetsManager.address, {from: accounts[0]})
-    }).then(function () {
-      return chronoBankPlatform.changeContractOwnership(ContractsManager.address, {from: accounts[0]})
-    }).then(function () {
-      return contractsManager.claimContractOwnership(ChronoBankPlatform.address, 8, {from: accounts[0]})
-    }).then(function () {*/
-//      return Exchange.deployed()
- //   }).then(function (instance) {
- //     exchange = instance;
- //     return exchange.init(ChronoBankAssetWithFeeProxy.address)
- //   }).then(function () {
-//      return exchange.changeContractOwnership(contractsManager.address, {from: accounts[0]})
- //   }).then(function () {
- //     return contractsManager.claimContractOwnership(exchange.address, 4, {from: accounts[0]})
-    }).then(function () {
- //     return Rewards.deployed()
- //   }).then(function (instance) {
- //     rewards = instance;
- //     return rewards.init(ChronoBankAssetProxy.address, 0)
- //   }).then(function () {
- //     return contractsManager.setOtherAddress(rewards.address, {from: accounts[0]})
- //   }).then(function () {
- //     return contractsManager.setAddress(ChronoBankAssetProxy.address, {from: accounts[0]})
- //   }).then(function () {
- //     return contractsManager.setAddress(ChronoBankAssetWithFeeProxy.address, {from: accounts[0]})
- //   }).then(function(instance) {
- //     web3.eth.sendTransaction({to: Exchange.address, value: BALANCE_ETH, from: accounts[0]});
       done();
     }).catch(function (e) { console.log(e); });
   });

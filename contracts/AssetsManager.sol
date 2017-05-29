@@ -1,16 +1,22 @@
 pragma solidity ^0.4.11;
 
 import "./Managed.sol";
-import "./ERC20ManagerInterface.sol";
-import "./ContractsManagerInterface.sol";
-import "./ChronoBankAssetWithFee.sol";
+import {ERC20ManagerInterface as ERC20Manager} from "./ERC20ManagerInterface.sol";
+import {ContractsManagerInterface as ContractsManager} from "./ContractsManagerInterface.sol";
 import "./ChronoBankPlatformInterface.sol";
+import "./ChronoBankAssetInterface.sol";
 import "./ChronoBankAssetProxyInterface.sol";
 import "./ERC20Interface.sol";
 import "./OwnedInterface.sol";
 
+contract ChronoBankAsset {
+    function init(ChronoBankAssetProxyInterface _proxy) returns(bool);
+}
+
 contract ProxyFactory {
     function createProxy() returns (address);
+    function createAsset() returns (address);
+    function createAssetWithFee() returns (address);
 }
 
 contract AssetsManager is Managed {
@@ -21,13 +27,15 @@ contract AssetsManager is Managed {
 
     bytes32[] public assetSymbols;
     mapping(bytes32 => address) assets;
-    mapping(address => mapping(address => bool)) owners;
+    mapping(address => address[]) owners;
 
     mapping (address => bool) timeHolder;
 
     modifier onlyAssetOwner(bytes32 _symbol) {
-        if (owners[assets[_symbol]][msg.sender]) {
-            _;
+        for(uint i=0;i<owners[assets[_symbol]].length;i++) {
+            if (owners[assets[_symbol]][i] == msg.sender) {
+                _;
+            }
         }
     }
 
@@ -37,6 +45,7 @@ contract AssetsManager is Managed {
         }
         platform = _platform;
         contractsManager = _contractsManager;
+        shareable =
         proxyFactory = _proxyFactory;
         return true;
     }
@@ -52,7 +61,7 @@ contract AssetsManager is Managed {
         }
     }
 
-    function claimPlatformOwnership() onlyAuthorized returns (bool) {
+    function claimPlatformOwnership() returns (bool) {
         if (OwnedInterface(platform).claimContractOwnership()) {
             return true;
         }
@@ -81,16 +90,17 @@ contract AssetsManager is Managed {
     }
 
     function addAsset(address asset, bytes32 _symbol, address owner) returns (bool) {
-        if(ChronoBankAssetProxy(asset).chronoBankPlatform() == platform) {
+        if(ChronoBankAssetProxyInterface(asset).chronoBankPlatform() == platform) {
             if(ChronoBankPlatformInterface(platform).proxies(_symbol) == asset) {
                 if(ChronoBankPlatformInterface(platform).isOwner(this,_symbol)) {
                     uint8 decimals = ChronoBankPlatformInterface(platform).baseUnit(_symbol);
-                    if(!ERC20ManagerInterface(contractsManager).addToken(asset,'',bytes32ToString(_symbol),'',decimals,bytes32(0), bytes32(0))) {
+                    address erc20Manager = ContractsManager(contractsManager).getContractAddressByType(ContractsManager.ContractType.ERC20Manager);
+                    if(!ERC20Manager(erc20Manager).addToken(asset,'',bytes32ToString(_symbol),'',decimals,bytes32(0), bytes32(0))) {
 
                     }
                     assets[_symbol] = asset;
                     assetSymbols.push(_symbol);
-                    owners[asset][owner] = true;
+                    owners[asset].push(owner);
                     return true;
                 }
             }
@@ -100,30 +110,55 @@ contract AssetsManager is Managed {
 
     function createAsset(bytes32 symbol, string name, string description, uint value, uint8 decimals, bool isMint, bool withFee) returns (address) {
         string memory smbl = bytes32ToString(symbol);
-        address token = ERC20ManagerInterface(contractsManager).getTokenAddressBySymbol(smbl);
+        address erc20Manager = ContractsManager(contractsManager).getContractAddressByType(ContractsManager.ContractType.ERC20Manager);
+        address token = ERC20Manager(erc20Manager).getTokenAddressBySymbol(smbl);
         if(token == address(0)) {
             token = ProxyFactory(proxyFactory).createProxy();
             address asset;
             ChronoBankPlatformInterface(platform).issueAsset(symbol, value, name, description, decimals, isMint);
             if(withFee) {
-                asset = new ChronoBankAssetWithFee();
+                asset = ProxyFactory(proxyFactory).createAssetWithFee();
             }
             else {
-                asset = new ChronoBankAsset();
+                asset = ProxyFactory(proxyFactory).createAsset();
             }
             ChronoBankPlatformInterface(platform).setProxy(token, symbol);
-            ChronoBankAssetProxy(token).init(platform, smbl, name);
-            ChronoBankAssetProxy(token).proposeUpgrade(asset);
+            ChronoBankAssetProxyInterface(token).init(platform, smbl, name);
+            ChronoBankAssetProxyInterface(token).proposeUpgrade(asset);
             ChronoBankAsset(asset).init(ChronoBankAssetProxyInterface(token));
-            if(!ERC20ManagerInterface(contractsManager).addToken(token, name, smbl, '', decimals, bytes32(0), bytes32(0))) {
+            if(!ERC20Manager(erc20Manager).addToken(token, name, smbl, '', decimals, bytes32(0), bytes32(0))) {
 
             }
             assets[symbol] = token;
             assetSymbols.push(symbol);
-            owners[token][msg.sender] = true;
+            owners[token].push(msg.sender);
             return token;
         }
         return 0;
+    }
+
+    function addAssetOwner(bytes32 _symbol, address _owner) onlyAssetOwner(_symbol) returns(bool) {
+        for(uint i=0;i<owners[assets[_symbol]].length;i++) {
+            if(owners[assets[_symbol]][i] == _owner) {
+                return false;
+            }
+        }
+        owners[assets[_symbol]].push(_owner);
+        return true;
+    }
+
+    function deleteAssetOwner(bytes32 _symbol, address _owner) onlyAssetOwner(_symbol) returns(bool) {
+        for(uint i=0;i<owners[assets[_symbol]].length;i++) {
+            if(owners[assets[_symbol]][i] == msg.sender) {
+                return false;
+            }
+            if(owners[assets[_symbol]][i] == _owner) {
+                owners[assets[_symbol]][i] = owners[assets[_symbol]][owners[assets[_symbol]].length-1];
+                owners[assets[_symbol]].length--;
+                return true;
+            }
+        }
+        return false;
     }
 
     function bytes32ToString(bytes32 x) constant returns (string) {

@@ -92,13 +92,13 @@ contract ChronoMint is Managed {
     }
 
     function sendAsset(bytes32 _symbol, address _to, uint _value) onlyAuthorized returns (bool) {
-        return AssetsManagerInterface(ContractsManager(contractsManager).contractByType(uint(ContractsManager.ContractType.AssetsManager))).sendAsset(_symbol, _to, _value);
+        return AssetsManagerInterface(ContractsManager(contractsManager).getContractAddressByType(ContractsManager.ContractType.AssetsManager)).sendAsset(_symbol, _to, _value);
     }
 
     function reissueAsset(uint _value, bytes32 _locName) multisig returns (bool) {
         uint issued = offeringCompanies[_locName].issued;
         if(_value <= offeringCompanies[_locName].issueLimit - issued) {
-            if(AssetsManagerInterface(ContractsManager(contractsManager).contractByType(uint(ContractsManager.ContractType.AssetsManager))).reissueAsset(offeringCompanies[_locName].currency, _value)) {
+            if(AssetsManagerInterface(ContractsManager(contractsManager).getContractAddressByType(ContractsManager.ContractType.AssetsManager)).reissueAsset(offeringCompanies[_locName].currency, _value)) {
                 offeringCompanies[_locName].issued = issued + _value;
                 eventsHistory.reissue(_value,_locName);
                 return true;
@@ -110,7 +110,7 @@ contract ChronoMint is Managed {
     function revokeAsset(uint _value, bytes32 _locName) multisig returns (bool) {
         uint issued = offeringCompanies[_locName].issued;
         if(_value <= issued) {
-            if(AssetsManagerInterface(ContractsManager(contractsManager).contractByType(uint(ContractsManager.ContractType.AssetsManager))).revokeAsset(offeringCompanies[_locName].currency, _value)) {
+            if(AssetsManagerInterface(ContractsManager(contractsManager).getContractAddressByType(ContractsManager.ContractType.AssetsManager)).revokeAsset(offeringCompanies[_locName].currency, _value)) {
                 offeringCompanies[_locName].issued = issued - _value;
                 eventsHistory.reissue(_value, _locName);
                 return true;

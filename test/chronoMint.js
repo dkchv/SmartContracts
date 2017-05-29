@@ -154,7 +154,7 @@ contract('ChronoMint', function(accounts) {
       erc20Manager = instance;
       return contractsManager.addContract(erc20Manager.address,3,'ERC20Manager','0x0','0x0')
     }).then(function () {
-      return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, ProxyFactory.address)
+      return assetsManager.init(chronoBankPlatform.address, contractsManager.address, ProxyFactory.address)
 	    }).then(function () {
       return ExchangeManager.deployed()
     }).then(function (instance) {
