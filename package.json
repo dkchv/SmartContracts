@@ -11,7 +11,7 @@
   "author": "Mike Fluff <mf@mikefluff.com> (http://mikefluff.com)",
   "license": "GPLv3",
   "dependencies": {
-    "truffle": "Mikefluff/truffle",
+    "truffle": "3.2.4",
     "truffle-hdwallet-provider": "mikefluff/truffle-hdwallet-provider",
     "ethereum-bridge": "oraclize/ethereum-bridge",
     "ethereumjs-testrpc": "mikefluff/testrpc"
