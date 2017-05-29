@@ -76,6 +76,19 @@ contract('Exchange Manager', function(accounts) {
   const BALANCE_ETH = 1000;
   const fakeArgs = [0, 0, 0, 0, 0, 0, 0, 0];
 
+  const contractTypes = {
+    LOCManager: 0, // LOCManager
+    PendingManager: 1, // PendingManager
+    UserManager: 2, // UserManager
+    ERC20Manager: 3, // ERC20Manager
+    ExchangeManager: 4, // ExchangeManager
+    TrackersManager: 5, // TrackersManager
+    Voting: 6, // Voting
+    Rewards: 7, // Rewards
+    AssetsManager: 8, // AssetsManager
+    TimeHolder:  9 //TimeHolder
+  }
+
   before('setup', function (done) {
     FakeCoin.deployed().then(function(instance) {
       coin = instance;
@@ -127,9 +140,9 @@ contract('Exchange Manager', function(accounts) {
       return ERC20Manager.deployed()
     }).then(function (instance) {
       erc20Manager = instance;
-      return contractsManager.addContract(erc20Manager.address,3,'ERC20Manager','0x0','0x0')
+      return contractsManager.addContract(erc20Manager.address,contractTypes.ERC20Manager,'ERC20Manager','0x0','0x0')
     }).then(function () {
-      return assetsManager.init(chronoBankPlatform.address, erc20Manager.address, ProxyFactory.address)
+      return assetsManager.init(chronoBankPlatform.address, contractsManager.address, ProxyFactory.address)
     }).then(function () {
       return Exchange.deployed()
     }).then(function (instance) {
@@ -137,13 +150,9 @@ contract('Exchange Manager', function(accounts) {
       return ExchangeManager.deployed()
     }).then(function (instance) {
       exchangeManager = instance;
-      return contractsManager.addContract(exchangeManager.address,4,'ExchangeManager','0x0','0x0')
+      return contractsManager.addContract(exchangeManager.address,contractTypes.ExchangeManager,'ExchangeManager','0x0','0x0')
     }).then(function () {
-      return contractsManager.addContract(chronoBankPlatform.address,8,'Time Token Platform','0x0','0x0')
-    }).then(function () {
-      return contractsManager.addContract(chronoBankPlatform.address,9,'LH Token Platform','0x0','0x0')
-    }).then(function () {
-      return contractsManager.addContract(assetsManager.address,10,'Assets Manager','0x0','0x0')
+      return contractsManager.addContract(assetsManager.address,contractTypes.AssetsManager,'Assets Manager','0x0','0x0')
     }).then(function () {
       return UserManager.deployed()
     }).then(function (instance) {
@@ -276,7 +285,7 @@ contract('Exchange Manager', function(accounts) {
     }).then(function () {
       return rewards.changeContractOwnership(contractsManager.address, {from: accounts[0]})
     }).then(function () {
-      return contractsManager.claimContractOwnership(rewards.address, 7, {from: accounts[0]})
+      return contractsManager.claimContractOwnership(rewards.address, contractTypes.Rewards, {from: accounts[0]})
     }).then(function () {
       return TimeHolder.deployed()
     }).then(function (instance) {

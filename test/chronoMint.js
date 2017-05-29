@@ -85,6 +85,19 @@ contract('ChronoMint', function(accounts) {
   const BALANCE_ETH = 1000;
   const fakeArgs = [0,0,0,0,0,0,0,0];
 
+  const contractTypes = {
+    LOCManager: 0, // LOCManager
+    PendingManager: 1, // PendingManager
+    UserManager: 2, // UserManager
+    ERC20Manager: 3, // ERC20Manager
+    ExchangeManager: 4, // ExchangeManager
+    TrackersManager: 5, // TrackersManager
+    Voting: 6, // Voting
+    Rewards: 7, // Rewards
+    AssetsManager: 8, // AssetsManager
+    TimeHolder:  9 //TimeHolder
+  }
+
   before('setup', function(done) {
     FakeCoin.deployed().then(function(instance) {
       coin = instance;
@@ -114,11 +127,6 @@ contract('ChronoMint', function(accounts) {
     }).then(function () {
       return RateTracker.deployed()
     }).then(function (instance) {
-      rateTracker = instance
-      //}).then(function () {
-      //  return web3.eth.sendTransaction({to: rateTracker.address, value: web3.toWei(1, "ether"), from: accounts[0]});
-      //}).then(function () {
-      //  return rateTracker.update()
       return ChronoBankPlatform.deployed()
     }).then(function (instance) {
       platform = instance;
@@ -152,20 +160,16 @@ contract('ChronoMint', function(accounts) {
       return ERC20Manager.deployed()
     }).then(function (instance) {
       erc20Manager = instance;
-      return contractsManager.addContract(erc20Manager.address,3,'ERC20Manager','0x0','0x0')
+      return contractsManager.addContract(erc20Manager.address,contractTypes.ERC20Manager,'ERC20Manager','0x0','0x0')
     }).then(function () {
       return assetsManager.init(chronoBankPlatform.address, contractsManager.address, ProxyFactory.address)
-	    }).then(function () {
+    }).then(function () {
       return ExchangeManager.deployed()
     }).then(function (instance) {
       exchangeManager = instance;
-      return contractsManager.addContract(exchangeManager.address,4,'ExchangeManager','0x0','0x0')
+      return contractsManager.addContract(exchangeManager.address,contractTypes.ExchangeManager,'ExchangeManager','0x0','0x0')
     }).then(function () {
-      return contractsManager.addContract(chronoBankPlatform.address,8,'Time Token Platform','0x0','0x0')
-    }).then(function () {
-      return contractsManager.addContract(chronoBankPlatform.address,9,'LH Token Platform','0x0','0x0')
-    }).then(function () {
-      return contractsManager.addContract(assetsManager.address,10,'Assets Manager','0x0','0x0')
+      return contractsManager.addContract(assetsManager.address,contractTypes.AssetsManager,'Assets Manager','0x0','0x0')
     }).then(function () {
       return UserManager.deployed()
     }).then(function (instance) {
@@ -321,7 +325,7 @@ contract('ChronoMint', function(accounts) {
     }).then(function () {
       return rewards.changeContractOwnership(contractsManager.address, {from: accounts[0]})
     }).then(function () {
-      return contractsManager.claimContractOwnership(rewards.address, 7, {from: accounts[0]})
+      return contractsManager.claimContractOwnership(rewards.address, contractTypes.Rewards, {from: accounts[0]})
     }).then(function () {
       return TimeHolder.deployed()
     }).then(function (instance) {
@@ -329,10 +333,10 @@ contract('ChronoMint', function(accounts) {
       return instance.init(UserStorage.address, ChronoBankAssetProxy.address)
     }).then(function () {
       return timeHolder.addListener(rewards.address)
-  //  }).then(function() {
-  //    return erc20Manager.addToken(timeProxyContract.address,'','TIME','',8,'0x0','0x0', {from: accounts[0]})
-  //  }).then(function () {
-  //    return erc20Manager.addToken(lhProxyContract.address,'','LHT','',8,'0x0','0x0',  {from: accounts[0]})
+      //  }).then(function() {
+      //    return erc20Manager.addToken(timeProxyContract.address,'','TIME','',8,'0x0','0x0', {from: accounts[0]})
+      //  }).then(function () {
+      //    return erc20Manager.addToken(lhProxyContract.address,'','LHT','',8,'0x0','0x0',  {from: accounts[0]})
     }).then(function(instance) {
       //web3.eth.sendTransaction({to: Exchange.address, value: BALANCE_ETH, from: accounts[0]});
       done();
@@ -430,7 +434,7 @@ contract('ChronoMint', function(accounts) {
 
     it("can show all Asset contracts", function() {
       return erc20Manager.getTokenAddresses.call().then(function(r) {
-	console.log(r);
+        console.log(r);
         assert.equal(r.length,3);
       });
     });
@@ -531,7 +535,7 @@ contract('ChronoMint', function(accounts) {
         1000,
         bytes32fromBase58("QmTeW79w7QQ6Npa3b1d5tANreCDxF2iDaAPsDvW6KtLmfB"),
         unix,
-	bytes32('LHT')
+        bytes32('LHT')
       ).then(function(r){
         return chronoMint.addLOC(
           bytes32("Bob's Hard Workers"),
@@ -539,7 +543,7 @@ contract('ChronoMint', function(accounts) {
           1000,
           bytes32fromBase58("QmTeW79w7QQ6Npa3b1d5tANreCDxF2iDaAPsDvW6KtLmfB"),
           unix,
-	  bytes32('LHT'),{
+          bytes32('LHT'),{
             from: accounts[0],
             gas: 3000000
           }
@@ -915,7 +919,7 @@ contract('ChronoMint', function(accounts) {
         1000000,
         bytes32fromBase58("QmTeW79w7QQ6Npa3b1d5tANreCDxF2iDaAPsDvW6KtLmfB"),
         unix,
-	bytes32('LHT')
+        bytes32('LHT')
       ).then(function (r) {
         return chronoMint.getLOCById.call(0).then(function (r) {
           assert.equal(r[6], Status.maintenance);
@@ -1120,16 +1124,16 @@ contract('ChronoMint', function(accounts) {
           return shareable.confirm(conf_sign, {from: owner1}).then(function () {
             return shareable.confirm(conf_sign, {from: owner2}).then(function () {
               return shareable.confirm(conf_sign, {from: owner3}).then(function () {
-		                    return shareable.confirm(conf_sign, {from: owner5}).then(function () {
-                return lhProxyContract.balanceOf.call(assetsManager.address).then(function (r2) {
-                  assert.equal(r2, 0);
+                return shareable.confirm(conf_sign, {from: owner5}).then(function () {
+                  return lhProxyContract.balanceOf.call(assetsManager.address).then(function (r2) {
+                    assert.equal(r2, 0);
+                  });
                 });
               });
             });
           });
         });
       });
-    });
     });
 
     it("should be abble to Issue 1000000 LHT for LOC according to issueLimit", function () {
@@ -1330,18 +1334,16 @@ contract('ChronoMint', function(accounts) {
                 })
               })
             })
-            //})
-            // })
           })
         })
       })
     })
 
-    it("should be able to TIME exchange rate from Bittrex", function() {
-      return rateTracker.rate.call().then((r) => {
-        assert.notEqual(r,null)
-      })
-    })
+    /*   it("should be able to TIME exchange rate from Bittrex", function() {
+     return rateTracker.rate.call().then((r) => {
+     assert.notEqual(r,null)
+     })
+     })*/
 
 
   });

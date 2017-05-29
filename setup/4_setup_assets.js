@@ -8,11 +8,15 @@ const ChronoBankAssetWithFee = artifacts.require('./ChronoBankAssetWithFee.sol')
 const ChronoMint = artifacts.require('./ChronoMint.sol')
 const ContractsManager = artifacts.require('./ContractsManager.sol')
 const Exchange = artifacts.require('./Exchange.sol')
+const ERC20Manager = artifacts.require("./ERC20Manager.sol");
+const ExchangeManager = artifacts.require("./ExchangeManager.sol");
+const AssetsManager = artifacts.require("./AssetsManager");
 const Shareable = artifacts.require("./PendingManager.sol");
 const TimeHolder = artifacts.require('./TimeHolder.sol')
 const Rewards = artifacts.require('./Rewards.sol')
 const UserStorage = artifacts.require('./UserStorage.sol');
 const UserManager = artifacts.require("./UserManager.sol");
+const ProxyFactory = artifacts.require("./ProxyFactory.sol");
 const Vote = artifacts.require('./Vote.sol')
 const bytes32fromBase58 = require('../test/helpers/bytes32fromBase58')
 
@@ -37,6 +41,20 @@ const IS_NOT_REISSUABLE = false
 const fakeArgs = [0, 0, 0, 0, 0, 0, 0, 0]
 const BALANCE_ETH = 1000
 
+const contractTypes = {
+  LOCManager: 0, // LOCManager
+  PendingManager: 1, // PendingManager
+  UserManager: 2, // UserManager
+  ERC20Manager: 3, // ERC20Manager
+  ExchangeManager: 4, // ExchangeManager
+  TrackersManager: 5, // TrackersManager
+  Voting: 6, // Voting
+  Rewards: 7, // Rewards
+  AssetsManager: 8, // AssetsManager
+  TimeHolder:  9 //TimeHolder
+}
+
+let assetsManager
 let chronoBankPlatform
 let chronoMint
 let contractsManager
@@ -44,7 +62,10 @@ let timeHolder
 let eventsHistory
 let chronoBankPlatformEmitter
 let rewards
-let exchange
+let userManager
+let exchangeManager
+let chronoBankAsset
+let chronoBankAssetProxy
 let chronoBankAssetWithFee
 let chronoBankAssetWithFeeProxy
 
@@ -71,75 +92,94 @@ module.exports = (callback) => {
       accounts = r
       params = {from: accounts[0]}
       paramsGas = {from: accounts[0], gas: 3000000}
-      return UserStorage.deployed()
-    }).then(function (instance) {
-      return instance.addOwner(UserManager.address)
-    }).then(function () {
-      return ChronoMint.deployed()
-    }).then(function (instance) {
-      return instance.init(UserStorage.address, Shareable.address, ContractsManager.address)
-    }).then(function () {
       return ContractsManager.deployed()
-    }).then(function (instance) {
-      return instance.init(UserStorage.address, Shareable.address)
-    }).then(function () {
-      return Shareable.deployed()
-    }).then(function (instance) {
-      return instance.init(UserStorage.address)
-    }).then(function () {
-      return UserManager.deployed()
-    }).then(function (instance) {
-      return instance.init(UserStorage.address, Shareable.address)
-    }).then(function () {
-      return ChronoBankPlatform.deployed()
-    })
-    .then(i => {
-      chronoBankPlatform = i
-      return ChronoBankAssetWithFee.deployed()
-    })
-    .then((instance) => {
-      chronoBankAssetWithFee = instance
-      return ChronoMint.deployed()
-    })
-    .then(i => {
-      chronoMint = i
-    })
-    .then(() => {
-      return ContractsManager.deployed()
-    })
-    .then(i => {
+    }).then(i => {
       contractsManager = i
-    })
-    .then(() => {
+      return i.init(UserStorage.address, Shareable.address)
+    }).then(() => {
+      return UserStorage.deployed()
+    }).then(i => {
+      return i.addOwner(UserManager.address)
+    }).then(() => {
+      return UserManager.deployed()
+    }).then(i => {
+      userManager = i
+      return i.init(UserStorage.address, Shareable.address)
+    }).then(() => {
+      return Shareable.deployed()
+    }).then(i => {
+      return i.init(UserStorage.address)
+    }).then(() => {
+      return ChronoMint.deployed()
+    }).then(i => {
+      chronoMint = i
+      return i.init(UserStorage.address, Shareable.address, ContractsManager.address)
+    }).then(() => {
+      return AssetsManager.deployed()
+    }).then(i => {
+      assetsManager = i
+      return i.init(ChronoBankPlatform.address, ContractsManager.address, ProxyFactory.address)
+    }).then(() => {
+      return contractsManager.addContract(ChronoMint.address,contractTypes.LOCManager,'LOCs Manager','0x0','0x0')
+    }).then(() => {
+      return contractsManager.addContract(Shareable.address,contractTypes.PendingManager,'Pendings Manager','0x0','0x0')
+    }).then(() => {
+      return contractsManager.addContract(UserManager.address,contractTypes.UserManager,'User Manager','0x0','0x0')
+    }).then(() => {
       return Vote.deployed()
-    }).then((instance) => {
-      vote = instance;
-      return instance.init(TimeHolder.address, UserStorage.address, Shareable.address)
+    }).then(i => {
+      vote = i
+      return i.init(TimeHolder.address, UserStorage.address, Shareable.address)
+    }).then(() => {
+      return contractsManager.addContract(Vote.address,contractTypes.Voting,'Voting Manager','0x0','0x0')
     }).then(() => {
       return TimeHolder.deployed()
-    })
-    .then(i => {
+    }).then(i => {
       timeHolder = i
       return timeHolder.init(UserStorage.address, ChronoBankAssetProxy.address)
-    }).then(function () {
+    }).then(() => {
       return timeHolder.addListener(Vote.address)
-    })
-    .then(() => {
+    }).then(() => {
+      return timeHolder.addListener(Rewards.address)
+    }).then(() => {
+      return contractsManager.addContract(TimeHolder.address,contractTypes.TimeHolder,'Time Holder','0x0','0x0')
+    }).then(() => {
+      return ChronoBankPlatform.deployed()
+    }).then(i => {
+      chronoBankPlatform = i
+      return ChronoBankAsset.deployed()
+    }).then(i => {
+      chronoBankAsset = i
+      return ChronoBankAssetWithFee.deployed()
+    }).then(i => {
+      chronoBankAssetWithFee = i
+      return ChronoBankAssetProxy.deployed()
+    }).then(i => {
+      chronoBankAssetProxy = i
+      return ChronoBankAssetWithFeeProxy.deployed()
+    }).then(i => {
+      chronoBankAssetWithFeeProxy = i
       return ChronoBankPlatformEmitter.deployed()
-    })
-    .then(i => {
+    }).then(i => {
       chronoBankPlatformEmitter = i
       return EventsHistory.deployed()
-    })
-    .then(i => {
+    }).then(i => {
       eventsHistory = i
       return chronoBankPlatform.setupEventsHistory(EventsHistory.address, {
         from: accounts[0],
         gas: 3000000
       })
-    })
-
-    .then(() => {
+    }).then(() => {
+      return chronoMint.setupEventsHistory(EventsHistory.address, {
+        from: accounts[0],
+        gas: 3000000
+      })
+    }).then(function () {
+      return userManager.setupEventsHistory(EventsHistory.address, {
+        from: accounts[0],
+        gas: 3000000
+      })
+    }).then(() => {
       return eventsHistory.addEmitter(
         chronoBankPlatformEmitter.contract.emitTransfer.getData.apply(this, fakeArgs).slice(0, 10),
         ChronoBankPlatformEmitter.address, paramsGas
@@ -174,33 +214,22 @@ module.exports = (callback) => {
         chronoBankPlatformEmitter.contract.emitError.getData.apply(this, fakeArgs).slice(0, 10),
         ChronoBankPlatformEmitter.address, paramsGas
       )
-    })
-
-    .then(() => {
+    }).then(() => {
       return eventsHistory.addVersion(chronoBankPlatform.address, 'Origin', 'Initial version.')
     }).then(() => {
-      return chronoBankPlatform
-        .issueAsset(SYMBOL, 1000000000000, NAME, DESCRIPTION, BASE_UNIT, IS_NOT_REISSUABLE, paramsGas)
-    }).then(r => {
+      return chronoBankPlatform.issueAsset(SYMBOL, 1000000000000, NAME, DESCRIPTION, BASE_UNIT, IS_NOT_REISSUABLE, paramsGas)
+    }).then(() => {
       return chronoBankPlatform.setProxy(ChronoBankAssetProxy.address, SYMBOL, params)
+    }).then(() => {
+      return chronoBankAssetProxy.init(ChronoBankPlatform.address, SYMBOL, NAME, params)
+    }).then(() => {
+      return chronoBankAssetProxy.proposeUpgrade(ChronoBankAsset.address, params)
+    }).then(() => {
+      return chronoBankAsset.init(ChronoBankAssetProxy.address, params)
     }).then(r => {
-      return ChronoBankAssetProxy.deployed()
-    }).then(i => {
-      return i.init(ChronoBankPlatform.address, SYMBOL, NAME, params)
+      return chronoBankAssetProxy.transfer(assetsManager.address, 500000000000, params)
     }).then(r => {
-      return ChronoBankAssetProxy.deployed()
-    }).then(i => {
-      return i.proposeUpgrade(ChronoBankAsset.address, params)
-    }).then(r => {
-      return ChronoBankAsset.deployed()
-    }).then(i => {
-      return i.init(ChronoBankAssetProxy.address, params)
-    }).then(r => {
-      return ChronoBankAssetProxy.deployed()
-    }).then(i => {
-      return i.transfer(ContractsManager.address, 500000000000, params)
-    }).then(r => {
-      return chronoBankPlatform.changeOwnership(SYMBOL, ContractsManager.address, params)
+      return chronoBankPlatform.changeOwnership(SYMBOL, assetsManager.address, params)
     }).then(r => {
       return chronoBankPlatform.issueAsset(SYMBOL2, 0, NAME2, DESCRIPTION2, BASE_UNIT, IS_REISSUABLE, {
         from: accounts[0],
@@ -209,29 +238,26 @@ module.exports = (callback) => {
     }).then(() => {
       return chronoBankPlatform.setProxy(ChronoBankAssetWithFeeProxy.address, SYMBOL2, params)
     }).then(() => {
-      return ChronoBankAssetWithFeeProxy.deployed()
-    }).then(i => {
-      chronoBankAssetWithFeeProxy = i
-      return i.init(ChronoBankPlatform.address, SYMBOL2, NAME2, params)
+      return chronoBankAssetWithFeeProxy.init(ChronoBankPlatform.address, SYMBOL2, NAME2, params)
     }).then(() => {
       return chronoBankAssetWithFeeProxy.proposeUpgrade(ChronoBankAssetWithFee.address, params)
     }).then(() => {
       return chronoBankAssetWithFee.init(ChronoBankAssetWithFeeProxy.address, params)
     }).then(() => {
       return chronoBankAssetWithFee.setupFee(Rewards.address, 100, {from: accounts[0]})
-    }).then(function () {
-      return chronoBankPlatform.changeOwnership(SYMBOL2, ContractsManager.address, params)
     }).then(() => {
-      return Exchange.deployed()
+      return chronoBankPlatform.changeOwnership(SYMBOL2, assetsManager.address, params)
+    }).then(() => {
+      return chronoBankPlatform.changeContractOwnership(assetsManager.address, {from: accounts[0]})
+    }).then(() => {
+      return assetsManager.claimPlatformOwnership({from: accounts[0]})
+    }).then(() => {
+      return ExchangeManager.deployed()
     }).then(i => {
-      exchange = i
-      return exchange.init(ChronoBankAssetWithFeeProxy.address)
+      exchangeManager = i
+      return exchangeManager.init(ContractsManager.address)
     }).then(() => {
-      return exchange.changeContractOwnership(contractsManager.address, params)
-    }).then(() => {
-      return contractsManager.claimContractOwnership(exchange.address, false, params)
-    }).then(() => {
-      return contractsManager.forward(1, exchange.contract.setPrices.getData(1, 2))
+      return contractsManager.addContract(ExchangeManager.address,contractTypes.ExchangeManager,'Exchange Manager','0x0','0x0')
     }).then(() => {
       return Rewards.deployed()
     }).then(i => {
@@ -242,34 +268,20 @@ module.exports = (callback) => {
     }).then(() => {
       return rewards.changeContractOwnership(contractsManager.address, params)
     }).then(() => {
-      return contractsManager.claimContractOwnership(rewards.address, false, params)
+      return contractsManager.claimContractOwnership(rewards.address, contractTypes.Rewards, params)
     }).then(() => {
-      return contractsManager.setAddress(ChronoBankAssetProxy.address, params)
+    return assetsManager.addAsset(chronoBankAssetProxy.address,SYMBOL, accounts[0], {
+      from: accounts[0],
+      gas: 3000000
+    })
     }).then(() => {
-      return contractsManager.setAddress(ChronoBankAssetWithFeeProxy.address, params)
+    return assetsManager.addAsset(chronoBankAssetWithFeeProxy.address,SYMBOL2, chronoMint.address, {
+      from: accounts[0],
+      gas: 3000000
     })
-
-    /** EXCHANGE INIT >>> */
-    .then(() => {
-      exchange.setPrices(1, 2)
-    })
-    .then(() => {
-      return chronoMint.proposeLOC(
-        bytes32('Bob\'s Hard Workers'),
-        bytes32('www.ru'), 1000,
-        bytes32fromBase58('QmTeW79w7QQ6Npa3b1d5tANreCDxF2iDaAPsDvW6KtLmfB'),
-        1484554656
-      )
-    })
-    .then(() => {
-      return web3.eth.sendTransaction({to: Exchange.address, value: BALANCE_ETH, from: accounts[0]})
-    })
-    .then(() => {
+    }).then(() => {
       exit()
-    })
-    /** <<< EXCHANGE INIT */
-
-    .catch(function (e) {
+    }).catch(function (e) {
       console.log(e)
     })
 }

@@ -45,7 +45,6 @@ contract AssetsManager is Managed {
         }
         platform = _platform;
         contractsManager = _contractsManager;
-        shareable =
         proxyFactory = _proxyFactory;
         return true;
     }

@@ -6,7 +6,7 @@ import "./OwnedInterface.sol";
 
 contract ContractsManager is Managed {
 
-    enum ContractType {LOCManager, PendingManager, UserManager, ERC20Manager, ExchangeManager, TrackersManager, Voting, Rewards, TIME, LH, AssetsManager}
+    enum ContractType {LOCManager, PendingManager, UserManager, ERC20Manager, ExchangeManager, TrackersManager, Voting, Rewards, AssetsManager, TimeHolder}
 
     event LogAddContract(
     address contractAddr,

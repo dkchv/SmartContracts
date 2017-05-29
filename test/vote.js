@@ -101,6 +101,19 @@ contract('Vote', function(accounts) {
   const BALANCE_ETH = 1000;
   const fakeArgs = [0,0,0,0,0,0,0,0];
 
+  const contractTypes = {
+    LOCManager: 0, // LOCManager
+    PendingManager: 1, // PendingManager
+    UserManager: 2, // UserManager
+    ERC20Manager: 3, // ERC20Manager
+    ExchangeManager: 4, // ExchangeManager
+    TrackersManager: 5, // TrackersManager
+    Voting: 6, // Voting
+    Rewards: 7, // Rewards
+    AssetsManager: 8, // AssetsManager
+    TimeHolder:  9 //TimeHolder
+  }
+
   before('setup', function(done) {
     UserStorage.deployed().then(function (instance) {
       return instance.addOwner(UserManager.address)
@@ -111,6 +124,7 @@ contract('Vote', function(accounts) {
     }).then(function () {
       return ContractsManager.deployed()
     }).then(function (instance) {
+      contractsManager = instance
       return instance.init(UserStorage.address, Shareable.address)
     }).then(function () {
       return Vote.deployed()
@@ -144,15 +158,14 @@ contract('Vote', function(accounts) {
       return ERC20Manager.deployed()
     }).then(function (instance) {
       erc20Manager = instance;
+      return contractsManager.addContract(erc20Manager.address,contractTypes.ERC20Manager,'ERC20Manager','0x0','0x0')
+    }).then(function () {
       return ChronoBankPlatform.deployed()
     }).then(function (instance) {
       chronoBankPlatform = instance;
       return ChronoMint.deployed()
     }).then(function (instance) {
       chronoMint = instance;
-      return ContractsManager.deployed()
-    }).then(function (instance) {
-      contractsManager = instance;
       return UserStorage.deployed()
     }).then(function (instance) {
       userStorage = instance;
@@ -164,7 +177,7 @@ contract('Vote', function(accounts) {
       return AssetsManager.deployed()
     }).then(function (instance) {
       assetsManager = instance;
-      return assetsManager.init(platform.address, erc20Manager.address, ProxyFactory.address)
+      return assetsManager.init(platform.address, contractsManager.address, ProxyFactory.address)
     }).then(function () {
       return timeHolder.addListener(vote.address)
     }).then(function () {
