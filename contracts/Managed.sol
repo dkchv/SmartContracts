@@ -6,7 +6,7 @@ import "./ContractsManagerInterface.sol";
 
 contract Managed {
 
-    address contractsManager;
+    address public contractsManager;
 
     modifier onlyAuthorized() {
         if (isAuthorized(msg.sender)) {
