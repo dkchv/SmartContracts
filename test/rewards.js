@@ -479,7 +479,7 @@ contract('Rewards', (accounts) => {
           .then(() => timeHolder.withdrawShares(25))
           .then(() => { return reward.getPartsCount.call() })
           .then((res) => {
-            data = [];
+            let data = [];
             for(let i=1;i<res;i++) {
                 data.push(reward.storeDeposits(i));
             }

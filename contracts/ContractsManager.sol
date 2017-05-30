@@ -35,7 +35,7 @@ contract ContractsManager is Managed {
     event LogContractDescriptionChange(address contractAddr, string oldDescription, string newDescription);
     event LogContractAddressChange(address oldAddr, address newAddr);
 
-    address[] public contractAddresses;
+    address[] contractAddresses;
 
     mapping (address => ContractMetadata) contracts;
     mapping (uint => address) contractByType;
