@@ -11,14 +11,19 @@ contract Emitter {
 }
 
 contract UserManager is Managed {
+    address userStorage;
 
-    function init(address _userStorage, address _shareable) returns (bool) {
+    function init(address _userStorage, address _contractsManager) returns (bool) {
         if (userStorage != 0x0) {
             return false;
         }
         userStorage = _userStorage;
-        shareable = _shareable;
         UserStorage(userStorage).addMember(msg.sender, true);
+        if(contractsManager != 0x0)
+        return false;
+        if(!ContractsManagerInterface(_contractsManager).addContract(this,ContractsManagerInterface.ContractType.UserManager,'Users Manager',0x0,0x0))
+        return false;
+        contractsManager = _contractsManager;
         return true;
     }
 
@@ -110,8 +115,42 @@ contract UserManager is Managed {
         return UserStorage(userStorage).getHash(key);
     }
 
+    function getCBE(address key) constant returns (bool) {
+        return UserStorage(userStorage).getCBE(key);
+    }
+
+    function getMemberId(address sender) constant returns (uint) {
+        return UserStorage(userStorage).getMemberId(sender);
+    }
+
     function required() constant returns (uint) {
         return UserStorage(userStorage).required();
+    }
+
+    function adminCount() constant returns (uint) {
+        return UserStorage(userStorage).adminCount();
+    }
+
+    function userCount() constant returns (uint) {
+        return UserStorage(userStorage).userCount();
+    }
+
+    function getCBEMembers() constant returns (address[] addresses, bytes32[] hashes) {
+        addresses = new address[](UserStorage(userStorage).adminCount());
+        hashes = new bytes32[](UserStorage(userStorage).adminCount());
+        uint j = 0;
+        address memberAddr;
+        bytes32 hash;
+        bool isCBE;
+        for (uint i = 1; i < UserStorage(userStorage).userCount(); i++) {
+            (memberAddr,hash,isCBE) = UserStorage(userStorage).members(i);
+            if (isCBE) {
+                addresses[j] = memberAddr;
+                hashes[j] = hash;
+                j++;
+            }
+        }
+        return (addresses, hashes);
     }
 
     function()

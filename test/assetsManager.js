@@ -23,14 +23,13 @@ var LOC = artifacts.require("./LOC.sol");
 var TimeHolder = artifacts.require("./TimeHolder.sol");
 var RateTracker = artifacts.require("./KrakenPriceTicker.sol");
 var Reverter = require('./helpers/reverter');
-var Vote = artifacts.require("./Vote.sol");
 var bytes32 = require('./helpers/bytes32');
 var bytes32fromBase58 = require('./helpers/bytes32fromBase58');
 var Require = require("truffle-require");
 var Config = require("truffle-config");
 var eventsHelper = require('./helpers/eventsHelper');
 
-contract('Contracts Manager', function(accounts) {
+contract('Assets Manager', function(accounts) {
   var owner = accounts[0];
   var owner1 = accounts[1];
   var owner2 = accounts[2];
@@ -66,7 +65,6 @@ contract('Contracts Manager', function(accounts) {
   var timeHolder;
   var rateTracker;
   var txId;
-  var vote;
   var watcher;
   var loc_contracts = [];
   var labor_hour_token_contracts = [];
@@ -175,19 +173,12 @@ contract('Contracts Manager', function(accounts) {
         gas: 3000000
       });
     }).then(function () {
-      return Vote.deployed()
-    }).then(function (instance) {
-      vote = instance;
-      return instance.init(ContractsManager.address)
-    }).then(function () {
       return TimeHolder.deployed()
     }).then(function (instance) {
       timeHolder = instance;
       return instance.init(ContractsManager.address, ChronoBankAssetProxy.address)
     }).then(function () {
       return timeHolder.addListener(rewards.address)
-    }).then(function () {
-      return timeHolder.addListener(vote.address)
     }).then(function () {
       return ChronoBankPlatformEmitter.deployed()
     }).then(function (instance) {
@@ -318,99 +309,199 @@ contract('Contracts Manager', function(accounts) {
     }).then(function () {
       return assetsManager.claimPlatformOwnership({from: accounts[0]})
     }).then(function(instance) {
-      //web3.eth.sendTransaction({to: Exchange.address, value: BALANCE_ETH, from: accounts[0]});
       done();
     }).catch(function (e) { console.log(e); });
-    //reverter.snapshot(done);
   });
 
-  context("initial tests", function(){
+  context("initial tests", function() {
 
-    it("can provide ExchangeManager address.", function() {
-      return contractsManager.getContractAddressByType.call(contractTypes.ExchangeManager).then(function(r) {
-        assert.equal(r,exchangeManager.address);
+    it("Platform has correct TIME proxy address.", function () {
+      return platform.proxies.call(SYMBOL).then(function (r) {
+        assert.equal(r, timeProxyContract.address);
       });
     });
 
-    it("can provide RewardsContract address.", function() {
-      return contractsManager.getContractAddressByType.call(contractTypes.Rewards).then(function(r) {
-        assert.equal(r,rewards.address);
+    it("Platform has correct LHT proxy address.", function () {
+      return platform.proxies.call(SYMBOL2).then(function (r) {
+        assert.equal(r, lhProxyContract.address);
       });
     });
 
-    it("can provide LOCManager address.", function() {
-      return contractsManager.getContractAddressByType.call(contractTypes.LOCManager).then(function(r) {
-        assert.equal(r,chronoMint.address);
+    it("TIME contract has correct TIME proxy address.", function () {
+      return timeContract.proxy.call().then(function (r) {
+        assert.equal(r, timeProxyContract.address);
       });
     });
 
-    it("can provide ERC20Manager address.", function() {
-      return contractsManager.getContractAddressByType.call(contractTypes.ERC20Manager).then(function(r) {
-        assert.equal(r,erc20Manager.address);
+    it("LHT contract has correct LHT proxy address.", function () {
+      return lhContract.proxy.call().then(function (r) {
+        assert.equal(r, lhProxyContract.address);
       });
     });
 
-    it("can provide AssetsManager address.", function() {
-      return contractsManager.getContractAddressByType.call(contractTypes.AssetsManager).then(function(r) {
-        assert.equal(r,assetsManager.address);
+    it("TIME proxy has right version", function () {
+      return timeProxyContract.getLatestVersion.call().then(function (r) {
+        assert.equal(r, timeContract.address);
       });
     });
 
-    it("can provide UserManager address.", function() {
-      return contractsManager.getContractAddressByType.call(contractTypes.UserManager).then(function(r) {
-        assert.equal(r,userManager.address);
+    it("LHT proxy has right version", function () {
+      return lhProxyContract.getLatestVersion.call().then(function (r) {
+        assert.equal(r, lhContract.address);
       });
     });
+  });
 
-    it("can provide PendingManager address.", function() {
-      return contractsManager.getContractAddressByType.call(contractTypes.PendingManager).then(function(r) {
-        assert.equal(r,shareable.address);
-      });
-    });
+  context("CRUD test", function(){
 
-    it("can provide TimeHolder address.", function() {
-      return contractsManager.getContractAddressByType.call(contractTypes.TimeHolder).then(function(r) {
-        assert.equal(r,timeHolder.address);
-      });
-    });
-
-    it("can provide Voting address.", function() {
-      return contractsManager.getContractAddressByType.call(contractTypes.Voting).then(function(r) {
-        assert.equal(r,vote.address);
-      });
-    });
-
-    it("doesn't allow a non CBE key to change the contract address", function() {
-      return contractsManager.setContractAddress(vote.address, coin2.address,{from: owner1}).then(function(r) {
-        return contractsManager.getContractAddressByType.call(contractTypes.Voting).then(function(r){
-          assert.equal(r, vote.address);
+    it("can issue new Asset", function() {
+      return assetsManager.createAsset.call('TEST','TEST','TEST',1000000,2,true,false).then(function(r) {
+        console.log(r);
+        return assetsManager.createAsset('TEST','TEST','TEST',1000000,2,true,false,{
+          from: accounts[0],
+          gas: 3000000
+        }).then(function(tx) {
+          return ChronoBankAssetProxy.at(r).then(function(instance) {
+            return instance.totalSupply().then(function(r) {
+              console.log(r);
+              assert.equal(r,1000000);
+            });
+          });
         });
       });
     });
 
-    it("allows a CBE key to change the contract address", function() {
-      return contractsManager.setContractAddress(vote.address, coin2.address).then(function(r) {
-        return contractsManager.getContractAddressByType.call(contractTypes.Voting).then(function(r){
-          assert.equal(r, coin2.address);
+    it("allow add TIME Asset", function() {
+      return assetsManager.addAsset.call(timeProxyContract.address,'TIME', owner).then(function(r) {
+        console.log(r);
+        return assetsManager.addAsset(timeProxyContract.address,'TIME', owner, {
+          from: accounts[0],
+          gas: 3000000
+        }).then(function(tx) {
+          console.log(tx);
+          return assetsManager.getAssets.call().then(function(r) {
+            console.log(r);
+            assert.equal(r.length,2);
+          });
         });
       });
     });
 
-    it("doesn't allow a non CBE key to change the contract description", function() {
-      return contractsManager.setContractDescription(coin2.address, 'New Description',{from: owner1}).then(function(r) {
-        return contractsManager.getContractMetaData.call(coin2.address).then(function(r){
-          assert.equal(r[2], 'Voting');
+    it("allow add LHT Asset", function() {
+      return assetsManager.addAsset.call(lhProxyContract.address,'LHT', chronoMint.address).then(function(r) {
+        console.log(r);
+        return assetsManager.addAsset(lhProxyContract.address,'LHT', chronoMint.address, {
+          from: accounts[0],
+          gas: 3000000
+        }).then(function(tx) {
+          console.log(tx);
+          return assetsManager.getAssets.call().then(function(r) {
+            console.log(r);
+            assert.equal(r.length,3);
+          });
         });
       });
     });
 
-    it("allows a CBE key to change the contract address", function() {
-      return contractsManager.setContractDescription(coin2.address, 'New Description').then(function(r) {
-        return contractsManager.getContractMetaData.call(coin2.address).then(function(r){
-          assert.equal(r[2], 'New Description');
+    it("can provide TimeProxyContract address.", function() {
+      return erc20Manager.getTokenAddressBySymbol.call('TIME').then(function(r) {
+        assert.equal(r,timeProxyContract.address);
+      });
+    });
+
+    it("can provide LHProxyContract address.", function() {
+      return erc20Manager.getTokenAddressBySymbol.call('LHT').then(function(r) {
+        assert.equal(r,lhProxyContract.address);
+      });
+    });
+
+    it("should show 200 TIME balance", function () {
+      return assetsManager.getAssetBalance.call(bytes32('TIME')).then(function (r) {
+        assert.equal(r, 200000000000);
+      });
+    });
+
+    it("should know owner as TIME owner", function () {
+      return assetsManager.isAssetOwner.call(bytes32('TIME'),owner).then(function (r) {
+        assert.equal(r, true);
+      });
+    });
+
+    it("shouldn't know owner1 as TIME owner", function () {
+      return assetsManager.isAssetOwner.call(bytes32('TIME'),owner1).then(function (r) {
+        assert.equal(r, false);
+      });
+    });
+
+    it("should show owners for asset by SYMBOL", function () {
+      return assetsManager.getAssetOwners.call(bytes32('TIME')).then(function (r) {
+        assert.equal(r[0], owner);
+      });
+    });
+
+    it("should show assets symbol owner by address provided", function () {
+      return assetsManager.getAssetsForOwner.call(owner).then(function (r) {
+        console.log(r);
+        assert.equal(r.length, 2);
+      });
+    });
+
+    it("should show 200000000000 TIME balance", function () {
+      return assetsManager.getAssetBalance.call(bytes32('TIME')).then(function (r) {
+        assert.equal(r, 200000000000);
+      });
+    });
+
+    it("should be able to send 100 TIME to owner", function () {
+      return assetsManager.sendAsset.call(bytes32('TIME'), owner, 100).then(function (r) {
+        return assetsManager.sendAsset(bytes32('TIME'), owner, 100, {
+          from: accounts[0],
+          gas: 3000000
+        }).then(function () {
+          assert.isOk(r);
         });
       });
     });
+
+    it("check Owner has 100 TIME", function () {
+      return timeProxyContract.balanceOf.call(owner).then(function (r) {
+        assert.equal(r, 100);
+      });
+    });
+
+    it("should be able to send 1000 TIME to msg.sender", function () {
+      return assetsManager.sendTime({from: owner2, gas: 3000000}).then(function () {
+        return timeProxyContract.balanceOf.call(owner2).then(function (r) {
+          assert.equal(r, 1000000000);
+        });
+      });
+    });
+
+    it("shouldn't be able to send 1000 TIME to msg.sender twice", function () {
+      return assetsManager.sendTime({from: owner2, gas: 3000000}).then(function () {
+        return timeProxyContract.balanceOf.call(owner2).then(function (r) {
+          assert.equal(r, 1000000000);
+        });
+      });
+    });
+
+    it("should be able to send 100 TIME to owner1", function () {
+      return assetsManager.sendAsset.call(bytes32('TIME'), owner1, 100).then(function (r) {
+        return assetsManager.sendAsset(bytes32('TIME'), owner1, 100, {
+          from: accounts[0],
+          gas: 3000000
+        }).then(function () {
+          assert.isOk(r);
+        });
+      });
+    });
+
+    it("check Owner1 has 100 TIME", function () {
+      return timeProxyContract.balanceOf.call(owner1).then(function (r) {
+        assert.equal(r, 100);
+      });
+    });
+
 
   });
 });

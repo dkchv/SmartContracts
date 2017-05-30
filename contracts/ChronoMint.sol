@@ -1,7 +1,6 @@
 pragma solidity ^0.4.8;
 
 import "./Managed.sol";
-import "./ContractsManager.sol";
 import "./AssetsManagerInterface.sol";
 import "./ERC20Interface.sol";
 import "./ERC20ManagerInterface.sol";
@@ -20,7 +19,7 @@ contract Emitter {
 }
 
 contract ChronoMint is Managed {
-    address contractsManager;
+
     mapping (bytes32 => LOC) offeringCompanies;
     bytes32[] public offeringCompaniesNames;
 
@@ -39,12 +38,11 @@ contract ChronoMint is Managed {
     uint createDate;
     }
 
-    function init(address _userStorage, address _shareable, address _contractsManager) returns(bool) {
-        if (userStorage != 0x0) {
-            return false;
-        }
-        userStorage = _userStorage;
-        shareable = _shareable;
+    function init(address _contractsManager) returns(bool) {
+        if(contractsManager != 0x0)
+        return false;
+        if(!ContractsManagerInterface(_contractsManager).addContract(this,ContractsManagerInterface.ContractType.LOCManager,'LOCs Manager',0x0,0x0))
+        return false;
         contractsManager = _contractsManager;
         return true;
     }
@@ -92,13 +90,13 @@ contract ChronoMint is Managed {
     }
 
     function sendAsset(bytes32 _symbol, address _to, uint _value) onlyAuthorized returns (bool) {
-        return AssetsManagerInterface(ContractsManager(contractsManager).getContractAddressByType(ContractsManager.ContractType.AssetsManager)).sendAsset(_symbol, _to, _value);
+        return AssetsManagerInterface(ContractsManagerInterface(contractsManager).getContractAddressByType(ContractsManagerInterface.ContractType.AssetsManager)).sendAsset(_symbol, _to, _value);
     }
 
     function reissueAsset(uint _value, bytes32 _locName) multisig returns (bool) {
         uint issued = offeringCompanies[_locName].issued;
         if(_value <= offeringCompanies[_locName].issueLimit - issued) {
-            if(AssetsManagerInterface(ContractsManager(contractsManager).getContractAddressByType(ContractsManager.ContractType.AssetsManager)).reissueAsset(offeringCompanies[_locName].currency, _value)) {
+            if(AssetsManagerInterface(ContractsManagerInterface(contractsManager).getContractAddressByType(ContractsManagerInterface.ContractType.AssetsManager)).reissueAsset(offeringCompanies[_locName].currency, _value)) {
                 offeringCompanies[_locName].issued = issued + _value;
                 eventsHistory.reissue(_value,_locName);
                 return true;
@@ -110,7 +108,7 @@ contract ChronoMint is Managed {
     function revokeAsset(uint _value, bytes32 _locName) multisig returns (bool) {
         uint issued = offeringCompanies[_locName].issued;
         if(_value <= issued) {
-            if(AssetsManagerInterface(ContractsManager(contractsManager).getContractAddressByType(ContractsManager.ContractType.AssetsManager)).revokeAsset(offeringCompanies[_locName].currency, _value)) {
+            if(AssetsManagerInterface(ContractsManagerInterface(contractsManager).getContractAddressByType(ContractsManagerInterface.ContractType.AssetsManager)).revokeAsset(offeringCompanies[_locName].currency, _value)) {
                 offeringCompanies[_locName].issued = issued - _value;
                 eventsHistory.reissue(_value, _locName);
                 return true;

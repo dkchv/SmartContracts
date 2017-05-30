@@ -59,6 +59,7 @@ let chronoBankPlatform
 let chronoMint
 let contractsManager
 let timeHolder
+let shareable
 let eventsHistory
 let erc20Manager
 let chronoBankPlatformEmitter
@@ -94,62 +95,90 @@ module.exports = (callback) => {
       params = {from: accounts[0]}
       paramsGas = {from: accounts[0], gas: 3000000}
       return UserStorage.deployed()
-    }).then(i => {
-      return i.addOwner(UserManager.address)
-    }).then(() => {
+    }).then(function (instance) {
+      userStorage = instance
+      return instance.addOwner(UserManager.address)
+    }).then(function () {
       return UserManager.deployed()
-    }).then(i => {
-      userManager = i
-      return i.init(UserStorage.address, Shareable.address)
-    }).then(() => {
-      return Shareable.deployed()
-    }).then(i => {
-      return i.init(UserStorage.address)
-    }).then(() => {
+    }).then(function (instance) {
+      userManager = instance
+      return instance.init(UserStorage.address, ContractsManager.address)
+    }).then(function () {
       return ContractsManager.deployed()
-    }).then(i => {
-      contractsManager = i
-      return i.init(UserStorage.address, Shareable.address)
-    }).then(() => {
+    }).then(function (instance) {
+      contractsManager = instance
+      return Shareable.deployed()
+    }).then(function (instance) {
+      shareable = instance
+      return instance.init(ContractsManager.address)
+    }).then(function () {
       return ChronoMint.deployed()
-    }).then(i => {
-      chronoMint = i
-      return i.init(UserStorage.address, Shareable.address, ContractsManager.address)
-    }).then(() => {
+    }).then(function (instance) {
+      chronoMint = instance
+      return instance.init(ContractsManager.address)
+    }).then(function () {
+      return ChronoBankPlatform.deployed()
+    }).then(function (instance) {
+      platform = instance
+      return ChronoBankAsset.deployed()
+    }).then(function (instance) {
+      timeContract = instance
+      return ChronoBankAssetWithFee.deployed()
+    }).then(function (instance) {
+      lhContract = instance;
+      return ChronoBankAssetProxy.deployed()
+    }).then(function (instance) {
+      timeProxyContract = instance;
+      return ChronoBankAssetWithFeeProxy.deployed()
+    }).then(function(instance) {
+      lhProxyContract = instance;
+      return ChronoBankPlatform.deployed()
+    }).then(function (instance) {
+      chronoBankPlatform = instance;
+      return Shareable.deployed()
+    }).then(function (instance) {
+      shareable = instance;
       return AssetsManager.deployed()
-    }).then(i => {
-      assetsManager = i
-      return i.init(ChronoBankPlatform.address, ContractsManager.address, ProxyFactory.address)
-    }).then(() => {
-      return contractsManager.addContract(ChronoMint.address,contractTypes.LOCManager,'LOCs Manager','0x0','0x0')
-    }).then(() => {
-      return contractsManager.addContract(Shareable.address,contractTypes.PendingManager,'Pendings Manager','0x0','0x0')
-    }).then(() => {
-      return contractsManager.addContract(UserManager.address,contractTypes.UserManager,'User Manager','0x0','0x0')
-    }).then(() => {
-      return Vote.deployed()
-    }).then(i => {
-      vote = i
-      return i.init(TimeHolder.address, UserStorage.address, Shareable.address)
-    }).then(() => {
-      return contractsManager.addContract(Vote.address,contractTypes.Voting,'Voting Manager','0x0','0x0')
-    }).then(() => {
-      return TimeHolder.deployed()
-    }).then(i => {
-      timeHolder = i
-      return timeHolder.init(UserStorage.address, ChronoBankAssetProxy.address)
-    }).then(() => {
-      return timeHolder.addListener(Vote.address)
-    }).then(() => {
-      return timeHolder.addListener(Rewards.address)
-    }).then(() => {
-      return contractsManager.addContract(TimeHolder.address,contractTypes.TimeHolder,'Time Holder','0x0','0x0')
-    }).then(() => {
+    }).then(function (instance) {
+      assetsManager = instance;
+      return assetsManager.init(chronoBankPlatform.address, contractsManager.address, ProxyFactory.address)
+    }).then(function () {
       return ERC20Manager.deployed()
     }).then(function (instance) {
       erc20Manager = instance;
-      return contractsManager.addContract(erc20Manager.address,contractTypes.ERC20Manager,'ERC20Manager','0x0','0x0')
-    }).then(() => {
+      return erc20Manager.init(ContractsManager.address)
+    }).then(function () {
+      return ExchangeManager.deployed()
+    }).then(function (instance) {
+      exchangeManager = instance;
+      return exchangeManager.init(ContractsManager.address)
+    }).then(function () {
+      return Rewards.deployed()
+    }).then(function (instance) {
+      rewards = instance;
+      return rewards.init(ContractsManager.address, 0)
+    }).then(function (instance) {
+      return rewards.addAsset(ChronoBankAssetWithFeeProxy.address)
+    }).then(function () {
+      return rewards.setupEventsHistory(EventsHistory.address, {
+        from: accounts[0],
+        gas: 3000000
+      });
+    }).then(function () {
+      return Vote.deployed()
+    }).then(function (instance) {
+      vote = instance;
+      return instance.init(ContractsManager.address)
+    }).then(function () {
+      return TimeHolder.deployed()
+    }).then(function (instance) {
+      timeHolder = instance;
+      return instance.init(ContractsManager.address, ChronoBankAssetProxy.address)
+    }).then(function () {
+      return timeHolder.addListener(rewards.address)
+    }).then(function () {
+      return timeHolder.addListener(vote.address)
+    }).then(function () {
       return ChronoBankPlatform.deployed()
     }).then(i => {
       chronoBankPlatform = i
@@ -257,24 +286,6 @@ module.exports = (callback) => {
       return chronoBankPlatform.changeContractOwnership(assetsManager.address, {from: accounts[0]})
     }).then(() => {
       return assetsManager.claimPlatformOwnership({from: accounts[0]})
-    }).then(() => {
-      return Rewards.deployed()
-    }).then(i => {
-      rewards = i
-      return rewards.init(TimeHolder.address, 0)
-    }).then(() => {
-      return rewards.addAsset(chronoBankAssetWithFeeProxy.address)
-    }).then(() => {
-      return rewards.changeContractOwnership(contractsManager.address, params)
-    }).then(() => {
-      return contractsManager.claimContractOwnership(rewards.address, contractTypes.Rewards, params)
-    }).then(() => {
-      return ExchangeManager.deployed()
-    }).then(i => {
-      exchangeManager = i
-      return exchangeManager.init(ContractsManager.address)
-    }).then(() => {
-      return contractsManager.addContract(ExchangeManager.address,contractTypes.ExchangeManager,'Exchange Manager','0x0','0x0')
     }).then(() => {
       return assetsManager.addAsset(chronoBankAssetProxy.address,SYMBOL, accounts[0], {
         from: accounts[0],

@@ -125,20 +125,18 @@ contract('Vote', function(accounts) {
       return ContractsManager.deployed()
     }).then(function (instance) {
       contractsManager = instance
-      return instance.init(UserStorage.address, Shareable.address)
-    }).then(function () {
       return Vote.deployed()
     }).then(function (instance) {
       vote = instance;	     
-      return instance.init(TimeHolder.address, UserStorage.address, Shareable.address)
+      return instance.init(ContractsManager.address)
     }).then(function () {
       return Shareable.deployed()
     }).then(function (instance) {
-      return instance.init(UserStorage.address)
+      return instance.init(ContractsManager.address)
     }).then(function () {
       return UserManager.deployed()
     }).then(function (instance) {
-      return instance.init(UserStorage.address, Shareable.address)
+      return instance.init(UserStorage.address, ContractsManager.address)
     }).then(function () {
       return ChronoBankPlatform.deployed()
     }).then(function (instance) {
@@ -158,7 +156,7 @@ contract('Vote', function(accounts) {
       return ERC20Manager.deployed()
     }).then(function (instance) {
       erc20Manager = instance;
-      return contractsManager.addContract(erc20Manager.address,contractTypes.ERC20Manager,'ERC20Manager','0x0','0x0')
+      return erc20Manager.init(ContractsManager.address)
     }).then(function () {
       return ChronoBankPlatform.deployed()
     }).then(function (instance) {
@@ -172,7 +170,7 @@ contract('Vote', function(accounts) {
       return TimeHolder.deployed()
     }).then(function (instance) {
       timeHolder = instance;
-      return instance.init(UserStorage.address, ChronoBankAssetProxy.address)
+      return instance.init(ContractsManager.address, ChronoBankAssetProxy.address)
     }).then(function () {
       return AssetsManager.deployed()
     }).then(function (instance) {
@@ -276,6 +274,12 @@ contract('Vote', function(accounts) {
     it("TIME proxy has right version", function() {
       return timeProxyContract.getLatestVersion.call().then(function(r) {
         assert.equal(r,timeContract.address);
+      });
+    });
+
+    it("can provide TimeHolder address.", function() {
+      return contractsManager.getContractAddressByType.call(contractTypes.TimeHolder).then(function(r) {
+        assert.equal(r,timeHolder.address);
       });
     });
 

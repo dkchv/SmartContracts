@@ -30,16 +30,18 @@ contract TimeHolder is Managed {
      * Init TimeHolder contract.
      *
      *
-     * @param _userStorage address.
+     * @param _contractsManager address.
      * @param _sharesContract ERC20 token address to act as shares.
      *
      * @return success.
      */
-    function init(address _userStorage, Asset _sharesContract) returns(bool) {
-        if (userStorage != 0x0) {
+
+    function init(address _contractsManager, Asset _sharesContract) returns(bool) {
+        if(contractsManager != 0x0)
             return false;
-        }
-        userStorage = _userStorage;
+        if(!ContractsManagerInterface(_contractsManager).addContract(this,ContractsManagerInterface.ContractType.TimeHolder,'TimeHolder',0x0,0x0))
+            return false;
+        contractsManager = _contractsManager;
         sharesContract = _sharesContract;
         return true;
     }

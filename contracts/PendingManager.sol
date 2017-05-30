@@ -1,21 +1,23 @@
 pragma solidity ^0.4.8;
 
-import "./UserStorage.sol";
+import "./UserManagerInterface.sol";
+import {ContractsManagerInterface as ContractsManager} from "./ContractsManagerInterface.sol";
 
 contract PendingManager {
     // TYPES
 
-    address userStorage;
+    address contractsManager;
+
     bytes32[] public txHashes;
     mapping (bytes32 => Transaction) public txs;
 
     struct Transaction {
-        address to;
-        bytes32 hash;
-        bytes data;
-        uint yetNeeded;
-        uint ownersDone;
-        uint timestamp;
+    address to;
+    bytes32 hash;
+    bytes data;
+    uint yetNeeded;
+    uint ownersDone;
+    uint timestamp;
     }
 
     // EVENTS
@@ -25,6 +27,7 @@ contract PendingManager {
     event Done(bytes32 hash, bytes data, uint timestamp);
     event Error(bytes32 message);
 
+    event Test(uint test);
 
     /// MODIFIERS
 
@@ -39,8 +42,13 @@ contract PendingManager {
 
     // METHODS
 
-    function init(address _userStorage) {
-        userStorage = _userStorage;
+    function init(address _contractsManager) returns(bool) {
+        if(contractsManager != 0x0)
+            return false;
+        if(!ContractsManager(_contractsManager).addContract(this,ContractsManager.ContractType.PendingManager,'Pending Manager',0x0,0x0))
+            return false;
+        contractsManager = _contractsManager;
+        return true;
     }
 
     function pendingsCount() constant returns (uint) {
@@ -61,15 +69,16 @@ contract PendingManager {
             return;
         }
         if (isOwner(sender)) {
-
             txHashes.push(_r);
+            address userManager = ContractsManager(contractsManager).getContractAddressByType(ContractsManager.ContractType.UserManager);
             txs[_r] = Transaction({
             hash: _r,
             data: data,
             to: to,
-            yetNeeded: UserStorage(userStorage).required(),
+            yetNeeded: UserManagerInterface(userManager).required(),
             ownersDone: 0,
             timestamp: now});
+
             conf(_r, sender);
         }
     }
@@ -91,13 +100,14 @@ contract PendingManager {
     // revokes a prior confirmation of the given operation
     function revoke(bytes32 _operation) external {
         if (isOwner(msg.sender)) {
-            uint ownerIndexBit = 2 ** UserStorage(userStorage).getMemberId(msg.sender);
+            address userManager = ContractsManager(contractsManager).getContractAddressByType(ContractsManager.ContractType.UserManager);
+            uint ownerIndexBit = 2 ** UserManagerInterface(userManager).getMemberId(msg.sender);
             var pending = txs[_operation];
             if (pending.ownersDone & ownerIndexBit > 0) {
                 pending.yetNeeded++;
                 pending.ownersDone -= ownerIndexBit;
                 Revoke(msg.sender, _operation);
-                if (pending.yetNeeded == UserStorage(userStorage).required()) {
+                if (pending.yetNeeded == UserManagerInterface(userManager).required()) {
                     deleteTx(_operation);
                 }
             }
@@ -105,20 +115,17 @@ contract PendingManager {
         }
     }
 
-    // gets an owner by 0-indexed position (using numOwners as the count)
-    function getOwner(uint ownerIndex) external constant returns (address) {
-        return UserStorage(userStorage).getMemberAddr(ownerIndex);
-    }
-
     function isOwner(address _addr) constant returns (bool) {
-        return UserStorage(userStorage).getCBE(_addr);
+        address userManager = ContractsManager(contractsManager).getContractAddressByType(ContractsManager.ContractType.UserManager);
+        return UserManagerInterface(userManager).getCBE(_addr);
     }
 
     function hasConfirmed(bytes32 _operation, address _owner) constant returns (bool) {
         var pending = txs[_operation];
         if (isOwner(_owner)) {
             // determine the bit to set for this owner
-            uint ownerIndexBit = 2 ** UserStorage(userStorage).getMemberId(_owner);
+            address userManager = ContractsManager(contractsManager).getContractAddressByType(ContractsManager.ContractType.UserManager);
+            uint ownerIndexBit = 2 ** UserManagerInterface(userManager).getMemberId(_owner);
             return !(pending.ownersDone & ownerIndexBit == 0);
         }
     }
@@ -130,7 +137,8 @@ contract PendingManager {
         if (isOwner(sender)) {
             Transaction pending = txs[_operation];
             // determine the bit to set for this owner
-            uint ownerIndexBit = 2 ** UserStorage(userStorage).getMemberId(sender);
+            address userManager = ContractsManager(contractsManager).getContractAddressByType(ContractsManager.ContractType.UserManager);
+            uint ownerIndexBit = 2 ** UserManagerInterface(userManager).getMemberId(sender);
             // make sure we (the message sender) haven't confirmed this operation previously
             if (pending.ownersDone & ownerIndexBit == 0) {
                 // ok - check if count is enough to go ahead

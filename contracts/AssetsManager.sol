@@ -2,7 +2,6 @@ pragma solidity ^0.4.11;
 
 import "./Managed.sol";
 import {ERC20ManagerInterface as ERC20Manager} from "./ERC20ManagerInterface.sol";
-import {ContractsManagerInterface as ContractsManager} from "./ContractsManagerInterface.sol";
 import "./ChronoBankPlatformInterface.sol";
 import "./ChronoBankAssetInterface.sol";
 import "./ChronoBankAssetProxyInterface.sol";
@@ -32,17 +31,29 @@ contract AssetsManager is Managed {
     mapping (address => bool) timeHolder;
 
     modifier onlyAssetOwner(bytes32 _symbol) {
-        for(uint i=0;i<owners[assets[_symbol]].length;i++) {
-            if (owners[assets[_symbol]][i] == msg.sender) {
-                _;
-            }
+        if(isAssetOwner(_symbol, msg.sender))
+        {
+            _;
         }
+    }
+
+    function isAssetOwner(bytes32 _symbol, address _owner) returns (bool) {
+        for(uint i=0;i<owners[assets[_symbol]].length;i++) {
+            if (owners[assets[_symbol]][i] == _owner)
+            return true;
+        }
+        return false;
     }
 
     function init(address _platform, address _contractsManager, address _proxyFactory) returns(bool) {
         if (platform != 0x0) {
             return false;
         }
+        if(contractsManager != 0x0)
+        return false;
+        if(!ContractsManagerInterface(_contractsManager).addContract(this,ContractsManagerInterface.ContractType.AssetsManager,'Assets Manager',0x0,0x0))
+        return false;
+        contractsManager = _contractsManager;
         platform = _platform;
         contractsManager = _contractsManager;
         proxyFactory = _proxyFactory;
@@ -93,7 +104,7 @@ contract AssetsManager is Managed {
             if(ChronoBankPlatformInterface(platform).proxies(_symbol) == asset) {
                 if(ChronoBankPlatformInterface(platform).isOwner(this,_symbol)) {
                     uint8 decimals = ChronoBankPlatformInterface(platform).baseUnit(_symbol);
-                    address erc20Manager = ContractsManager(contractsManager).getContractAddressByType(ContractsManager.ContractType.ERC20Manager);
+                    address erc20Manager = ContractsManagerInterface(contractsManager).getContractAddressByType(ContractsManagerInterface.ContractType.ERC20Manager);
                     if(!ERC20Manager(erc20Manager).addToken(asset,'',bytes32ToString(_symbol),'',decimals,bytes32(0), bytes32(0))) {
 
                     }
@@ -109,7 +120,7 @@ contract AssetsManager is Managed {
 
     function createAsset(bytes32 symbol, string name, string description, uint value, uint8 decimals, bool isMint, bool withFee) returns (address) {
         string memory smbl = bytes32ToString(symbol);
-        address erc20Manager = ContractsManager(contractsManager).getContractAddressByType(ContractsManager.ContractType.ERC20Manager);
+        address erc20Manager = ContractsManagerInterface(contractsManager).getContractAddressByType(ContractsManagerInterface.ContractType.ERC20Manager);
         address token = ERC20Manager(erc20Manager).getTokenAddressBySymbol(smbl);
         if(token == address(0)) {
             token = ProxyFactory(proxyFactory).createProxy();
@@ -158,6 +169,28 @@ contract AssetsManager is Managed {
             }
         }
         return false;
+    }
+
+    function getAssetOwners(bytes32 _symbol) constant returns (address[]) {
+        return owners[assets[_symbol]];
+    }
+
+    function getAssetsForOwner(address owner) constant returns (bytes32[]) {
+        uint counter;
+        uint i;
+        for(i=0;i<assetSymbols.length;i++) {
+            if(isAssetOwner(assetSymbols[i],owner))
+            counter++;
+        }
+        bytes32[] memory result = new bytes32[](counter);
+        counter = 0;
+        for(i=0;i<assetSymbols.length;i++) {
+            if(isAssetOwner(assetSymbols[i],owner)) {
+                result[counter] = assetSymbols[i];
+                counter++;
+            }
+        }
+        return result;
     }
 
     function bytes32ToString(bytes32 x) constant returns (string) {

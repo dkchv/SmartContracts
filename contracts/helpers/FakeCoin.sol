@@ -32,4 +32,5 @@ contract FakeCoin {
     function () payable {
 
     }
+
 }

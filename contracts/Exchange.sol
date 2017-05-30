@@ -330,4 +330,5 @@ contract Exchange is Owned {
     function () payable {
         ReceivedEther(msg.sender, msg.value);
     }
+
 }

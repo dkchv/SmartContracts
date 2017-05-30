@@ -1,7 +1,7 @@
 pragma solidity ^0.4.11;
 
 import "./TimeHolder.sol";
-import "./Owned.sol";
+import "./Managed.sol";
 
 contract Emitter {
     function periodClosed(uint periodId);
@@ -41,7 +41,7 @@ contract Emitter {
  * Note: all the non constant functions return false instead of throwing in case if state change
  * didn't happen yet.
  */
-contract Rewards is Owned {
+contract Rewards is Managed {
     // Structure of a particular period.
     struct Period {
     uint startDate;                                           // Period starting date, also
@@ -55,8 +55,6 @@ contract Rewards is Owned {
     mapping(address => mapping(address => bool)) calculated;  // Flag that indicates that rewards
     // already distributed for holder.
     }
-
-    address public timeHolder;
 
     address[] public assets;
     mapping(address => bool) assetsExists;
@@ -82,22 +80,24 @@ contract Rewards is Owned {
      *
      * Can be set only once.
      *
-     * @param _timeHolder TIME deposit contract address.
+     * @param _contractsManager contract address.
      * @param _closeIntervalDays period minimum length, in days.
      *
      * @return success.
      */
-    function init(address _timeHolder, uint _closeIntervalDays) returns(bool) {
+    function init(address _contractsManager, uint _closeIntervalDays) returns(bool) {
         if (periods.length > 0) {
             return false;
         }
-
-        timeHolder = _timeHolder;
+        if(contractsManager != 0x0)
+        return false;
+        if(!ContractsManagerInterface(_contractsManager).addContract(this,ContractsManagerInterface.ContractType.Rewards,'Rewards',0x0,0x0))
+        return false;
+        contractsManager = _contractsManager;
         closeInterval = _closeIntervalDays;
         periods.length++;
         periods[0].shareholdersCount = 1;
         periods[0].startDate = now;
-        assets.push(0);
 
         return true;
     }
@@ -124,7 +124,7 @@ contract Rewards is Owned {
      *
      * @return success.
      */
-    function setupEventsHistory(address _eventsHistory) onlyContractOwner() returns(bool) {
+    function setupEventsHistory(address _eventsHistory) onlyAuthorized returns(bool) {
         if (address(eventsHistory) != 0) {
             return false;
         }
@@ -132,12 +132,12 @@ contract Rewards is Owned {
         return true;
     }
 
-    function setCloseInterval(uint _closeInterval) onlyContractOwner returns(bool) {
+    function setCloseInterval(uint _closeInterval) onlyAuthorized returns(bool) {
         closeInterval = _closeInterval;
         return true;
     }
 
-    function setMaxSharesTransfer(uint _maxSharesTransfer) onlyContractOwner returns(bool) {
+    function setMaxSharesTransfer(uint _maxSharesTransfer) onlyAuthorized returns(bool) {
         maxSharesTransfer = _maxSharesTransfer;
         return true;
     }
@@ -147,13 +147,16 @@ contract Rewards is Owned {
     }
 
     function periodUnique(uint _period) constant returns(uint) {
-        if(_period == lastPeriod())
+        if(_period == lastPeriod()) {
+            address timeHolder = ContractsManagerInterface(contractsManager).getContractAddressByType(ContractsManagerInterface.ContractType.TimeHolder);
             return TimeHolder(timeHolder).shareholdersCount() - 1;
+        }
         else
             return periods[_period].shareholdersCount - 1;
     }
 
     modifier onlyTimeHolder() {
+        address timeHolder = ContractsManagerInterface(contractsManager).getContractAddressByType(ContractsManagerInterface.ContractType.TimeHolder);
         if (msg.sender == timeHolder) {
             _;
         }
@@ -171,18 +174,16 @@ contract Rewards is Owned {
             //_error("Cannot close period yet");
             return false;
         }
-
+        address timeHolder = ContractsManagerInterface(contractsManager).getContractAddressByType(ContractsManagerInterface.ContractType.TimeHolder);
         // Add new period.
         periods.length++;
         periods[lastPeriod()].startDate = now;
         periods[lastClosedPeriod()].shareholdersCount = TimeHolder(timeHolder).shareholdersCount();
-        //periods[lastClosedPeriod()].totalShares = TimeHolder(timeHolder).totalShares();
         if(assets.length != 0) {
-            for(uint i = 1;i<assets.length;i++) {
+            for(uint i = 0;i<assets.length;i++) {
                 registerAsset(Asset(assets[i]));
             }
         }
-
         return storeDeposits(0);
     }
 
@@ -205,6 +206,7 @@ contract Rewards is Owned {
         if(last >= periods[lastClosedPeriod()].shareholdersCount)
         last = periods[lastClosedPeriod()].shareholdersCount;
         address holder;
+        address timeHolder = ContractsManagerInterface(contractsManager).getContractAddressByType(ContractsManagerInterface.ContractType.TimeHolder);
         for(;first < last;first++) {
             holder = TimeHolder(timeHolder).shareholders(first);
             if(periods[lastClosedPeriod()].shares[holder] == 0) {
@@ -215,7 +217,7 @@ contract Rewards is Owned {
         first = _part * maxSharesTransfer + 1;
         for(;first < last;first++) {
             holder = TimeHolder(timeHolder).shareholders(first);
-            for(uint i = 1;i<assets.length;i++) {
+            for(uint i = 0;i<assets.length;i++) {
                 calculateRewardFor(Asset(assets[i]),holder);
             }
         }
@@ -227,7 +229,7 @@ contract Rewards is Owned {
         return false;
     }
 
-    function addAsset(address _asset) onlyContractOwner returns(bool) {
+    function addAsset(address _asset) onlyAuthorized returns(bool) {
         if(_asset != 0x0 && !assetsExists[_asset]) {
             assetsExists[_asset] = true;
             assets.push(_asset);
@@ -237,6 +239,7 @@ contract Rewards is Owned {
     }
 
     function registerAsset(Asset _asset) returns(bool) {
+        address timeHolder = ContractsManagerInterface(contractsManager).getContractAddressByType(ContractsManagerInterface.ContractType.TimeHolder);
         if (TimeHolder(timeHolder).sharesContract() == _asset) {
             _error("Asset is already registered");
             return false;
@@ -465,9 +468,10 @@ contract Rewards is Owned {
      * @return shares amount.
      */
     function depositBalanceInPeriod(address _address, uint _period) constant returns(uint) {
-        if(_period == lastPeriod())
-        return TimeHolder(timeHolder).shares(_address);
-        else
+        if(_period == lastPeriod()) {
+            address timeHolder = ContractsManagerInterface(contractsManager).getContractAddressByType(ContractsManagerInterface.ContractType.TimeHolder);
+            return TimeHolder(timeHolder).shares(_address);
+        }
         return periods[_period].shares[_address];
     }
 
@@ -479,9 +483,10 @@ contract Rewards is Owned {
      * @return shares amount.
      */
     function totalDepositInPeriod(uint _period) constant returns(uint) {
-        if(_period == lastPeriod())
-        return TimeHolder(timeHolder).totalShares();
-        else
+        if(_period == lastPeriod()) {
+            address timeHolder = ContractsManagerInterface(contractsManager).getContractAddressByType(ContractsManagerInterface.ContractType.TimeHolder);
+            return TimeHolder(timeHolder).totalShares();
+        }
         return periods[_period].totalShares;
     }
 

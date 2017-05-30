@@ -1,9 +1,9 @@
 pragma solidity ^0.4.11;
 
-import "./Owned.sol";
+import "./Managed.sol";
 import {ERC20Interface as Asset} from "./ERC20Interface.sol";
 
-contract ERC20Manager is Owned {
+contract ERC20Manager is Managed {
 
     event LogAddToken(
     address token,
@@ -59,6 +59,15 @@ contract ERC20Manager is Owned {
         }
     }
 
+    function init(address _contractsManager) returns(bool) {
+        if(contractsManager != 0x0)
+        return false;
+        if(!ContractsManagerInterface(_contractsManager).addContract(this,ContractsManagerInterface.ContractType.ERC20Manager,'ERC20 Manager',0x0,0x0))
+        return false;
+        contractsManager = _contractsManager;
+        return true;
+    }
+
     /// @dev Allows owner to add a new token to the registry.
     /// @param _token Address of new token.
     /// @param _name Name of new token.
@@ -106,7 +115,7 @@ contract ERC20Manager is Owned {
     /// @param _token Address of existing token.
     function removeToken(address _token)
     public
-    onlyContractOwner
+    onlyAuthorized
     tokenExists(_token)
     {
         for (uint i = 0; i < tokenAddresses.length; i++) {
@@ -135,7 +144,7 @@ contract ERC20Manager is Owned {
     /// @param _name New name.
     function setTokenName(address _token, string _name)
     public
-    onlyContractOwner
+    onlyAuthorized
     tokenExists(_token)
     {
         TokenMetadata token = tokens[_token];
@@ -148,7 +157,7 @@ contract ERC20Manager is Owned {
     /// @param _symbol New symbol.
     function setTokenSymbol(address _token, string _symbol)
     public
-    onlyContractOwner
+    onlyAuthorized
     tokenExists(_token)
     {
         TokenMetadata token = tokens[_token];
@@ -163,7 +172,7 @@ contract ERC20Manager is Owned {
     /// @param _ipfsHash New IPFS hash.
     function setTokenIpfsHash(address _token, bytes32 _ipfsHash)
     public
-    onlyContractOwner
+    onlyAuthorized
     tokenExists(_token)
     {
         TokenMetadata token = tokens[_token];
@@ -176,7 +185,7 @@ contract ERC20Manager is Owned {
     /// @param _swarmHash New Swarm hash.
     function setTokenSwarmHash(address _token, bytes32 _swarmHash)
     public
-    onlyContractOwner
+    onlyAuthorized
     tokenExists(_token)
     {
         TokenMetadata token = tokens[_token];
@@ -189,7 +198,7 @@ contract ERC20Manager is Owned {
     /// @param _url New URL.
     function setTokenUrl(address _token, string _url)
     public
-    onlyContractOwner
+    onlyAuthorized
     tokenExists(_token)
     {
         TokenMetadata token = tokens[_token];

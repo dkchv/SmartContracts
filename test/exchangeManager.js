@@ -91,31 +91,39 @@ contract('Exchange Manager', function(accounts) {
 
   before('setup', function (done) {
     FakeCoin.deployed().then(function(instance) {
-      coin = instance;
+      coin = instance
       return FakeCoin2.deployed()
     }).then(function(instance) {
-      coin2 = instance;
+      coin2 = instance
       return UserStorage.deployed()
     }).then(function (instance) {
+      userStorage = instance
       return instance.addOwner(UserManager.address)
-    }).then(function () {
-      return ContractsManager.deployed()
-    }).then(function (instance) {
-      contractsManager = instance;
-      return contractsManager.init(UserStorage.address, Shareable.address)
-    }).then(function () {
-      return Shareable.deployed()
-    }).then(function (instance) {
-      shareable = instance;
-      return instance.init(UserStorage.address)
     }).then(function () {
       return UserManager.deployed()
     }).then(function (instance) {
-      return instance.init(UserStorage.address, Shareable.address)
+      userManager = instance
+      return instance.init(UserStorage.address, ContractsManager.address)
     }).then(function () {
+      return ContractsManager.deployed()
+    }).then(function (instance) {
+      contractsManager = instance
+      return Shareable.deployed()
+    }).then(function (instance) {
+      shareable = instance
+      return instance.init(ContractsManager.address)
+    }).then(function () {
+      return ChronoMint.deployed()
+    }).then(function (instance) {
+      chronoMint = instance
+      return instance.init(ContractsManager.address)
+    }).then(function () {
+      return ChronoBankPlatform.deployed()
+    }).then(function (instance) {
+      platform = instance
       return ChronoBankAsset.deployed()
     }).then(function (instance) {
-      timeContract = instance;
+      timeContract = instance
       return ChronoBankAssetWithFee.deployed()
     }).then(function (instance) {
       lhContract = instance;
@@ -128,38 +136,53 @@ contract('Exchange Manager', function(accounts) {
       return ChronoBankPlatform.deployed()
     }).then(function (instance) {
       chronoBankPlatform = instance;
-      return ChronoMint.deployed()
-    }).then(function (instance) {
-      chronoMint = instance;
       return Shareable.deployed()
     }).then(function (instance) {
       shareable = instance;
       return AssetsManager.deployed()
     }).then(function (instance) {
       assetsManager = instance;
+      return assetsManager.init(chronoBankPlatform.address, contractsManager.address, ProxyFactory.address)
+    }).then(function () {
       return ERC20Manager.deployed()
     }).then(function (instance) {
       erc20Manager = instance;
-      return contractsManager.addContract(erc20Manager.address,contractTypes.ERC20Manager,'ERC20Manager','0x0','0x0')
+      return erc20Manager.init(ContractsManager.address)
     }).then(function () {
-      return assetsManager.init(chronoBankPlatform.address, contractsManager.address, ProxyFactory.address)
+      return ExchangeManager.deployed()
+    }).then(function (instance) {
+      exchangeManager = instance;
+      return exchangeManager.init(ContractsManager.address)
     }).then(function () {
       return Exchange.deployed()
     }).then(function (instance) {
       exchange = instance;
-      return ExchangeManager.deployed()
+      return Rewards.deployed()
     }).then(function (instance) {
-      exchangeManager = instance;
-      return contractsManager.addContract(exchangeManager.address,contractTypes.ExchangeManager,'ExchangeManager','0x0','0x0')
+      rewards = instance;
+      return rewards.init(ContractsManager.address, 0)
+    }).then(function (instance) {
+      return rewards.addAsset(ChronoBankAssetWithFeeProxy.address)
     }).then(function () {
-      return contractsManager.addContract(assetsManager.address,contractTypes.AssetsManager,'Assets Manager','0x0','0x0')
+      return rewards.setupEventsHistory(EventsHistory.address, {
+        from: accounts[0],
+        gas: 3000000
+      });
     }).then(function () {
-      return UserManager.deployed()
+      return Vote.deployed()
     }).then(function (instance) {
-      userManager = instance;
-      return UserStorage.deployed()
+      vote = instance;
+      return instance.init(ContractsManager.address)
+    }).then(function () {
+      return TimeHolder.deployed()
     }).then(function (instance) {
-      userStorage = instance;
+      timeHolder = instance;
+      return instance.init(ContractsManager.address, ChronoBankAssetProxy.address)
+    }).then(function () {
+      return timeHolder.addListener(rewards.address)
+    }).then(function () {
+      return timeHolder.addListener(vote.address)
+    }).then(function () {
       return ChronoBankPlatformEmitter.deployed()
     }).then(function (instance) {
       chronoBankPlatformEmitter = instance;
@@ -281,19 +304,6 @@ contract('Exchange Manager', function(accounts) {
         gas: 3000000
       });
     }).then(function () {
-      return exchangeManager.init(contractsManager.address)
-    }).then(function () {
-      return rewards.changeContractOwnership(contractsManager.address, {from: accounts[0]})
-    }).then(function () {
-      return contractsManager.claimContractOwnership(rewards.address, contractTypes.Rewards, {from: accounts[0]})
-    }).then(function () {
-      return TimeHolder.deployed()
-    }).then(function (instance) {
-      timeHolder = instance;
-      return instance.init(UserStorage.address, ChronoBankAssetProxy.address)
-    }).then(function () {
-      return timeHolder.addListener(rewards.address)
-    }).then(function () {
       done();
     }).catch(function (e) { console.log(e); });
   });
@@ -383,11 +393,11 @@ contract('Exchange Manager', function(accounts) {
     });
 
     it("shouldn't add exchange contract if it is not an exchange contract", function () {
-      return exchangeManager.addExchange.call(exchange.address, {
+      return exchangeManager.addExchange.call(coin.address, {
         from: accounts[0],
         gas: 3000000
       }).then(function (r) {
-        return exchangeManager.addExchange(exchange.address, {
+        return exchangeManager.addExchange(coin.address, {
           from: accounts[0],
           gas: 3000000
         }).then(function () {

@@ -29,6 +29,10 @@ contract ExchangeManager is Managed {
     }
 
     function init(address _contractsManager) returns(bool) {
+        if(contractsManager != 0x0)
+        return false;
+        if(!ContractsManagerInterface(_contractsManager).addContract(this,ContractsManagerInterface.ContractType.ExchangeManager,'Exchange Manager',0x0,0x0))
+        return false;
         contractsManager = _contractsManager;
         return true;
     }
@@ -41,8 +45,6 @@ contract ExchangeManager is Managed {
     }
 
     function addExchange(address _exchange) returns(uint) {
-        Exchange(_exchange).sellPrice;
-        Exchange(_exchange).buyPrice;
         if(owners[_exchange].length == 0) {
             exchanges.push(_exchange);
             owners[_exchange].push(msg.sender);
