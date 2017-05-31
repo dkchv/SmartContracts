@@ -6,6 +6,7 @@ const ChronoBankAssetWithFeeProxy = artifacts.require('./ChronoBankAssetWithFeeP
 const ChronoBankAsset = artifacts.require('./ChronoBankAsset.sol')
 const ChronoBankAssetWithFee = artifacts.require('./ChronoBankAssetWithFee.sol')
 const ChronoMint = artifacts.require('./ChronoMint.sol')
+const ChronoMintEmitter = artifacts.require("./ChronoMintEmitter.sol");
 const ContractsManager = artifacts.require('./ContractsManager.sol')
 const Exchange = artifacts.require('./Exchange.sol')
 const ERC20Manager = artifacts.require("./ERC20Manager.sol");
@@ -209,11 +210,31 @@ module.exports = (callback) => {
         from: accounts[0],
         gas: 3000000
       })
-    }).then(function () {
+    }).then(.then(() => {
       return userManager.setupEventsHistory(EventsHistory.address, {
         from: accounts[0],
         gas: 3000000
       })
+    }).then(() => {
+      return eventsHistory.addEmitter(chronoMintEmitter.contract.newLOC.getData.apply(this, fakeArgs).slice(0, 10), ChronoMintEmitter.address, {
+        from: accounts[0],
+        gas: 3000000
+      });
+    }).then(() => {
+      return eventsHistory.addEmitter(chronoMintEmitter.contract.hashUpdate.getData.apply(this, fakeArgs).slice(0, 10), ChronoMintEmitter.address, {
+        from: accounts[0],
+        gas: 3000000
+      });
+    }).then(() => {
+      return eventsHistory.addEmitter(chronoMintEmitter.contract.hashUpdate.getData.apply(this, fakeArgs).slice(0, 10), ChronoMintEmitter.address, {
+        from: accounts[0],
+        gas: 3000000
+      });
+    }).then(() => {
+      return eventsHistory.addEmitter(chronoMintEmitter.contract.hashUpdate.getData.apply(this, fakeArgs).slice(0, 10), ChronoMintEmitter.address, {
+        from: accounts[0],
+        gas: 3000000
+      });
     }).then(() => {
       return eventsHistory.addEmitter(
         chronoBankPlatformEmitter.contract.emitTransfer.getData.apply(this, fakeArgs).slice(0, 10),

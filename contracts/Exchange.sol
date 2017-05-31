@@ -124,6 +124,12 @@ contract Exchange is Owned {
         return true;
     }
 
+    function setActive(bool _active) onlyContractOwner() returns(bool) {
+        isActive = _active;
+    }
+
+
+
     /**
      * Set exchange operation prices.
      * Sell price cannot be less than buy price.
@@ -137,7 +143,7 @@ contract Exchange is Owned {
      */
     function setPrices(uint _buyPrice, uint _sellPrice) onlyContractOwner() returns(bool) {
         if (_sellPrice < _buyPrice) {
-            Error("Incorrect price");
+            _error("Incorrect price");
             return false;
         }
         buyPrice = _buyPrice;
@@ -169,25 +175,33 @@ contract Exchange is Owned {
      */
     function sell(uint _amount, uint _price) returns(bool) {
         if(!isActive) {
-            Error("Maintenance mode");
+            _error("Maintenance mode");
         }
 
         if (_price > buyPrice) {
-            Error("Price is too high");
+            _error("Price is too high");
             return false;
         }
         if (_balanceOf(msg.sender) < _amount) {
-            Error("Insufficient token balance");
+            _error("Insufficient token balance");
+            return false;
+        }
+        if (_amount > maxAmount) {
+            _error("Amount to high");
+            return false;
+        }
+        if (_amount < minAmount) {
+            _error("Amount to low");
             return false;
         }
 
         uint total = _mul(_amount, _price);
         if (this.balance < total) {
-            Error("Insufficient ether supply");
+            _error("Insufficient ether supply");
             return false;
         }
         if (!asset.transferFrom(msg.sender, this, _amount)) {
-            Error("Payment failed");
+            _error("Payment failed");
             return false;
         }
         if (!msg.sender.send(total)) {
@@ -210,25 +224,25 @@ contract Exchange is Owned {
      */
     function buy(uint _amount, uint _price) payable returns(bool) {
         if(!isActive) {
-            Error("Maintenance mode");
+            _error("Maintenance mode");
         }
 
         if (_price < sellPrice) {
-            Error("Price is to low");
+            _error("Price is to low");
             throw;
         }
         if (_balanceOf(this) < _amount) {
-            Error("Insufficient token balance");
+            _error("Insufficient token balance");
             throw;
         }
 
         uint total = _mul(_amount, _price);
         if (msg.value != total) {
-            Error("Insufficient ether supply");
+            _error("Insufficient ether supply");
             throw;
         }
         if (!asset.transfer(msg.sender, _amount)) {
-            Error("Payment failed");
+            _error("Payment failed");
             throw;
         }
 
@@ -248,21 +262,21 @@ contract Exchange is Owned {
      */
     function withdrawTokens(address _recipient, uint _amount) onlyContractOwner() returns(bool) {
         if (_balanceOf(this) < _amount) {
-            Error("Insufficient token supply");
+            _error("Insufficient token supply");
             return false;
         }
 
         uint amount = (_amount * 10000)/(10000 + feePercent);
 
         if (!asset.transfer(_recipient, amount)) {
-            Error("Transfer failed");
+            _error("Transfer failed");
             return false;
         }
 
         WithdrawTokens(_recipient, amount);
 
         if(!asset.transfer(rewards, _amount - amount)) {
-            Error("Fee transfer failed");
+            _error("Fee transfer failed");
         }
 
         return true;
@@ -293,21 +307,21 @@ contract Exchange is Owned {
      */
     function withdrawEth(address _recipient, uint _amount) onlyContractOwner() returns(bool) {
         if (this.balance < _amount) {
-            Error("Insufficient ether supply");
+            _error("Insufficient ether supply");
             return false;
         }
 
         uint amount = (_amount * 10000)/(10000 + feePercent);
 
         if (!_recipient.send(amount)) {
-            Error("Transfer failed");
+            _error("Transfer failed");
             return false;
         }
 
         WithdrawEth(_recipient, amount);
 
         if(!rewards.send(_amount - amount)) {
-            Error("Fee transfer failed");
+            _error("Fee transfer failed");
         }
 
         return true;
