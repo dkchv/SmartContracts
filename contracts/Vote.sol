@@ -24,12 +24,9 @@ contract Vote is Managed {
 
     //percent of Shares for max votelimit, where 5 is 0.05
     uint sharesPercent = 5;
-    //deleteIds storage
-    uint[] deletedIds;
 
     // Polls ids member took part
     mapping(address => uint[]) memberPolls;
-    mapping(address => uint[]) deletedMemberPolls;
 
     // event tracking new Polls
     event New_Poll(uint _pollId);
@@ -62,13 +59,7 @@ contract Vote is Managed {
             Error(bytes32("Vote limit exceeded"));
             throw;
         }
-        uint id;
-        if(deletedIds.length == 0)
-            id = pollsCount++;
-        else {
-            id = deletedIds[deletedIds.length-1];
-            deletedIds.length--;
-        }
+        uint id = pollsCount++;
         polls[id] = Poll(msg.sender,_title,_description,_votelimit,0,_deadline,true,0,false);
         for(uint i = 1; i < _count+1; i++) {
             polls[id].options[i] = 0;
@@ -120,8 +111,8 @@ contract Vote is Managed {
         return result;
     }
 
-    function getMemberPolls() constant returns (uint[],uint[]) {
-        return (memberPolls[msg.sender],deletedMemberPolls[msg.sender]);
+    function getMemberPolls() constant returns (uint[]) {
+        return (memberPolls[msg.sender]);
     }
 
     function getMemberVotesForPoll(uint _id) constant returns (uint result) {
@@ -186,12 +177,7 @@ contract Vote is Managed {
         }
         p.options[_choice] += TimeHolder(timeHolder).shares(msg.sender);
         p.memberOption[msg.sender] = _choice;
-        if(deletedMemberPolls[msg.sender].length == 0)
-            memberPolls[msg.sender].push(_pollId);
-        else {
-            memberPolls[msg.sender][deletedMemberPolls[msg.sender][deletedMemberPolls[msg.sender].length - 1]] = _pollId;
-            deletedMemberPolls[msg.sender].length--;
-        }
+        memberPolls[msg.sender].push(_pollId);
         NewVote(_choice, _pollId);
         // if votelimit reached, end poll
         if (p.votelimit > 0 || p.deadline <= now) {
@@ -228,12 +214,15 @@ contract Vote is Managed {
     }
 
     function deletePoll(uint _pollId) internal returns(bool) {
+        if(_pollId >= pollsCount)
+            return false;
         if(_pollId == pollsCount - 1)
             pollsCount--;
-        else
-            deletedIds.push(_pollId);
-        delete polls[_pollId];
-
+        else {
+            polls[_pollId] = polls[pollsCount-1];
+            pollsCount--;
+        }
+        return true;
     }
 
     //when time or vote limit is reached, set the poll status to false
@@ -295,12 +284,11 @@ contract Vote is Managed {
                 p.options[choice] -= _amount;
                 if(_total == 0) {
                     if(i == memberPolls[_address].length - 1) {
-                        delete memberPolls[_address];
                         memberPolls[_address].length--;
                     }
                     else {
-                        delete memberPolls[_address];
-                        deletedMemberPolls[msg.sender].push(i);
+                        memberPolls[_address][i] = memberPolls[_address][memberPolls[_address].length - 1];
+                        memberPolls[_address].length--;
                     }
                     delete p.memberOption[_address];
                 }

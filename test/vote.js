@@ -437,7 +437,7 @@ contract('Vote', function(accounts) {
 
     it("should be able to get Polls list owner took part", function() {
       return vote.getMemberPolls.call({from: owner}).then((r) => {
-        assert.equal(r[0].length,1);
+        assert.equal(r.length,1);
       });
     });
 
@@ -653,9 +653,10 @@ contract('Vote', function(accounts) {
       })
     })
 
-    it("shouldn't show empty list owner1 took part", function() {
+    it("should show owner1 took part in poll 0 and 1", function() {
       return vote.getMemberPolls.call({from: owner1}).then((r) => {
-        assert.equal(r[0].length - r[1].length,2);
+	console.log(r)
+        assert.equal(r.length,2);
       })
     })
 
@@ -667,9 +668,9 @@ contract('Vote', function(accounts) {
       })
     })
 
-    it("should show empty list owner1 took part", function() {
+    it("should show owner1 took part only in finished poll 1", function() {
       return vote.getMemberPolls.call({from: owner1}).then((r) => {
-        assert.equal(r[0].length - r[1],0)
+        assert.equal(r.length,1)
       })
     })
 

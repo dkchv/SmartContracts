@@ -88,6 +88,8 @@ contract ERC20Manager is Managed {
     tokenDoesNotExist(_token) returns(bool)
     {
         Asset(_token).totalSupply();
+        if(tokenBySymbol[_symbol] != address(0))
+            return false;
         tokens[_token] = TokenMetadata({
         token: _token,
         name: _name,

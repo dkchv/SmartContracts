@@ -373,15 +373,27 @@ contract('ERC20 Manager', function(accounts) {
 
     it("allow add TIME Asset", function() {
       return assetsManager.addAsset.call(timeProxyContract.address,'TIME', owner).then(function(r) {
-        console.log(r);
         return assetsManager.addAsset(timeProxyContract.address,'TIME', owner, {
           from: accounts[0],
           gas: 3000000
         }).then(function(tx) {
-          console.log(tx);
-          return assetsManager.getAssets.call().then(function(r) {
-            console.log(r);
-            assert.equal(r.length,2);
+          return assetsManager.getAssets.call().then(function(r2) {
+            assert.equal(r,true);
+            assert.equal(r2.length,2);
+          });
+        });
+      });
+    });
+
+    it("doesn't allow to add LHT Asset with TIME symbol", function() {
+      return assetsManager.addAsset.call(lhProxyContract.address,'TIME', chronoMint.address).then(function(r) {
+        return assetsManager.addAsset(lhProxyContract.address,'TIME', chronoMint.address, {
+          from: accounts[0],
+          gas: 3000000
+        }).then(function(tx) {
+          return assetsManager.getAssets.call().then(function(r2) {
+            assert.equal(r,false);
+            assert.equal(r2.length,2);
           });
         });
       });
@@ -389,15 +401,13 @@ contract('ERC20 Manager', function(accounts) {
 
     it("allow add LHT Asset", function() {
       return assetsManager.addAsset.call(lhProxyContract.address,'LHT', chronoMint.address).then(function(r) {
-        console.log(r);
         return assetsManager.addAsset(lhProxyContract.address,'LHT', chronoMint.address, {
           from: accounts[0],
           gas: 3000000
         }).then(function(tx) {
-          console.log(tx);
-          return assetsManager.getAssets.call().then(function(r) {
-            console.log(r);
-            assert.equal(r.length,3);
+          return assetsManager.getAssets.call().then(function(r2) {
+            assert.equal(r,true);
+            assert.equal(r2.length,3);
           });
         });
       });

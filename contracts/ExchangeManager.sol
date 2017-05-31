@@ -146,11 +146,11 @@ contract ExchangeManager is Managed {
         return true;
     }
 
-    function deleteExchangeOwner(address _exchange, address _owner) onlyExchangeOwner(_exchange) returns(bool) {
+    function removeExchangeOwner(address _exchange, address _owner) onlyExchangeOwner(_exchange) returns(bool) {
+        if(_owner == msg.sender) {
+            return false;
+        }
         for(uint i=0;i<owners[_exchange].length;i++) {
-            if(owners[_exchange][i] == msg.sender) {
-                return false;
-            }
             if(owners[_exchange][i] == _owner) {
                 owners[_exchange][i] = owners[_exchange][owners[_exchange].length-1];
                 owners[_exchange].length--;

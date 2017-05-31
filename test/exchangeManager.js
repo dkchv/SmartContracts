@@ -429,14 +429,8 @@ contract('Exchange Manager', function(accounts) {
   context("Security tests", function () {
 
     it("should allow to add exchange contract", function () {
-      return exchangeManager.addExchange.call(exchange.address, {
-        from: accounts[1],
-        gas: 3000000
-      }).then(function (r) {
-        return exchangeManager.addExchange(exchange.address, {
-          from: accounts[1],
-          gas: 3000000
-        }).then(function () {
+      return exchangeManager.addExchange.call(exchange.address, {from: owner1}).then(function (r) {
+        return exchangeManager.addExchange(exchange.address, {from: owner1}).then(function () {
           console.log(r);
           assert.equal(r, 2);
         });
@@ -445,19 +439,72 @@ contract('Exchange Manager', function(accounts) {
 
     it("should show acccount[1] as exchange contract owner", function () {
       return exchangeManager.getExchangeOwners.call(exchange.address).then(function (r) {
-        assert.equal(r[0],accounts[1]);
+        assert.equal(r[0],owner1);
       });
     });
 
     it("shouldn't allow exchange nonOwner to add owner to exchange contract", function () {
       return exchangeManager.addExchangeOwner.call(exchange.address,owner).then(function (r) {
-        assert.equal(r,false);
+        return exchangeManager.addExchangeOwner(exchange.address, owner).then(function () {
+          return exchangeManager.getExchangeOwners.call(exchange.address).then(function (r2)
+          {
+            assert.equal(r, false);
+            assert.equal(r2.length, 1);
+          });
+        });
       });
     });
 
     it("should allow exchange owner to add new owner to exchange", function () {
-      return exchangeManager.addExchangeOwner.call(exchange.address,owner, {from: accounts[1]}).then(function (r) {
-        assert.equal(r,true);
+      return exchangeManager.addExchangeOwner.call(exchange.address, owner, {from: owner1}).then(function (r) {
+        return exchangeManager.addExchangeOwner(exchange.address, owner, {from: owner1}).then(function () {
+          return exchangeManager.isExchangeOwner.call(exchange.address,owner).then(function (r2) {
+            assert.equal(r, true);
+            assert.equal(r2, true);
+          });
+        });
+      });
+    });
+
+    it("shouldn't allow exchange nonOwner to delete owner of exchange", function () {
+      return exchangeManager.isExchangeOwner.call(exchange.address, owner).then(function (r) {
+        return exchangeManager.removeExchangeOwner.call(exchange.address, owner, {from: owner2}).then(function (r2) {
+          return exchangeManager.removeExchangeOwner(exchange.address, owner, {from: owner2}).then(function () {
+            return exchangeManager.isExchangeOwner.call(exchange.address, owner).then(function (r3) {
+              assert.equal(r, true);
+              assert.equal(r2, false);
+              assert.equal(r3, true);
+            });
+          });
+        });
+      });
+    });
+
+    it("should allow exchange owner to delete owner of exchange", function () {
+      return exchangeManager.isExchangeOwner.call(exchange.address, owner).then(function (r) {
+        return exchangeManager.removeExchangeOwner.call(exchange.address, owner, {from: owner1}).then(function (r2) {
+          return exchangeManager.removeExchangeOwner(exchange.address, owner, {from: owner1}).then(function () {
+            return exchangeManager.isExchangeOwner.call(exchange.address, owner).then(function (r3) {
+              assert.equal(r, true);
+              assert.equal(r2, true);
+              assert.equal(r3, false);
+            });
+          });
+        });
+      });
+    });
+
+    it("shouldn't allow exchange owner to delete himself from exchange owners", function () {
+      return exchangeManager.isExchangeOwner.call(exchange.address, owner1).then(function (r) {
+        return exchangeManager.removeExchangeOwner.call(exchange.address, owner1, {from: owner1}).then(function (r2) {
+          return exchangeManager.removeExchangeOwner(exchange.address, owner1, {from: owner1}).then(function () {
+            return exchangeManager.isExchangeOwner.call(exchange.address, owner1).then(function (r3) {
+              assert.equal(r, true);
+              assert.equal(r2, false);
+              assert.equal(r3, true);
+            });
+          });
+        });
       });
     });
 
