@@ -229,12 +229,7 @@ module.exports = (callback) => {
         gas: 3000000
       });
     }).then(() => {
-      return eventsHistory.addEmitter(chronoMintEmitter.contract.hashUpdate.getData.apply(this, fakeArgs).slice(0, 10), ChronoMintEmitter.address, {
-        from: accounts[0],
-        gas: 3000000
-      });
-    }).then(() => {
-      return eventsHistory.addEmitter(chronoMintEmitter.contract.hashUpdate.getData.apply(this, fakeArgs).slice(0, 10), ChronoMintEmitter.address, {
+      return eventsHistory.addEmitter(chronoMintEmitter.contract.cbeUpdate.getData.apply(this, fakeArgs).slice(0, 10), ChronoMintEmitter.address, {
         from: accounts[0],
         gas: 3000000
       });

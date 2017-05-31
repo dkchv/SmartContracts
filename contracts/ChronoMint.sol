@@ -137,20 +137,21 @@ contract ChronoMint is Managed {
         return offeringCompaniesNames.length;
     }
 
-    function setLOC(bytes32 _name, bytes32 _website, uint _issueLimit, bytes32 _publishedHash, uint _expDate) onlyAuthorized() locExists(_name) returns(uint) {
+    function setLOC(bytes32 _name, bytes32 _newname, bytes32 _website, uint _issueLimit, bytes32 _publishedHash, uint _expDate) onlyAuthorized() locExists(_name) returns(bool) {
         LOC loc = offeringCompanies[_name];
         bool changed;
-        uint _id;
-        for (uint i = 0; i < offeringCompaniesNames.length; i++) {
-            if (offeringCompaniesNames[i] == loc.name) {
-                _id = i;
-                break;
+        if(!(_newname == _name)) {
+            uint _id;
+            for (uint i = 0; i < offeringCompaniesNames.length; i++) {
+                if (offeringCompaniesNames[i] == loc.name) {
+                    _id = i;
+                    break;
+                }
             }
-        }
-        if(!(_name == loc.name)) {
-            offeringCompaniesNames[_id] = _name;
-            loc.name = _name;
-            changed = true;
+            offeringCompaniesNames[_id] = _newname;
+            loc.name = _newname;
+            offeringCompanies[_newname] = loc;
+            delete offeringCompanies[_name];
         }
         if(!(_website == loc.website)) {
             loc.website = _website;
@@ -173,7 +174,7 @@ contract ChronoMint is Managed {
             offeringCompanies[_name] = loc;
             eventsHistory.updLOCValue(_name);
         }
-        return offeringCompaniesNames.length;
+        return true;
     }
 
     function setStatus(bytes32 _name, Status status) locExists(_name) multisig {

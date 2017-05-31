@@ -214,7 +214,7 @@ contract('ChronoMint', function(accounts) {
         gas: 3000000
       });
     }).then(() => {
-      return eventsHistory.addEmitter(chronoMintEmitter.contract.CBEUpdate.getData.apply(this, fakeArgs).slice(0, 10), ChronoMintEmitter.address, {
+      return eventsHistory.addEmitter(chronoMintEmitter.contract.cbeUpdate.getData.apply(this, fakeArgs).slice(0, 10), ChronoMintEmitter.address, {
         from: accounts[0],
         gas: 3000000
       });
@@ -427,6 +427,31 @@ contract('ChronoMint', function(accounts) {
       });
     });
 
+    it("doesn't allows non CBE to propose an LOC.", function() {
+      return chronoMint.addLOC.call(
+        bytes32("Bob's Hard Workers"),
+        bytes32("www.ru"),
+        1000,
+        bytes32fromBase58("QmTeW79w7QQ6Npa3b1d5tANreCDxF2iDaAPsDvW6KtLmfB"),
+        unix,
+        bytes32('LHT'), {from:owner1}
+      ).then(function(r){
+        return chronoMint.addLOC(
+          bytes32("Bob's Hard Workers"),
+          bytes32("www.ru"),
+          1000,
+          bytes32fromBase58("QmTeW79w7QQ6Npa3b1d5tANreCDxF2iDaAPsDvW6KtLmfB"),
+          unix,
+          bytes32('LHT'),{
+            from: owner1,
+            gas: 3000000
+          }
+        ).then(function(){
+          assert.equal(r,0);
+        });
+      });
+    });
+
     it("allows a CBE to propose an LOC.", function() {
       return chronoMint.addLOC.call(
         bytes32("Bob's Hard Workers"),
@@ -447,8 +472,63 @@ contract('ChronoMint', function(accounts) {
             gas: 3000000
           }
         ).then(function(){
+          return chronoMint.getLOCById.call(0).then(function(r2){
+            assert.equal(r,1)
+            assert.equal(r2[6], Status.maintenance);
+          });
+        });
+      });
+    });
+
+    it("doesn't allows a non CBE to change LOC data.", function() {
+      return chronoMint.setLOC.call(
+        bytes32("Bob's Hard Workers"),
+        bytes32("David's Hard Workers"),
+        bytes32("www.ru"),
+        1000,
+        bytes32fromBase58("QmTeW79w7QQ6Npa3b1d5tANreCDxF2iDaAPsDvW6KtLmfB"),
+        unix, {from:owner1}
+      ).then(function(r){
+        return chronoMint.setLOC(
+          bytes32("Bob's Hard Workers"),
+          bytes32("David's Hard Workers"),
+          bytes32("www.ru"),
+          1000,
+          bytes32fromBase58("QmTeW79w7QQ6Npa3b1d5tANreCDxF2iDaAPsDvW6KtLmfB"),
+          unix,{
+            from: owner1,
+            gas: 3000000
+          }
+        ).then(function(){
           return chronoMint.getLOCById.call(0).then(function(r){
-            assert.equal(r[6], Status.maintenance);
+            assert.equal(r[0], bytes32("Bob's Hard Workers"));
+          });
+        });
+      });
+    });
+
+    it("allows a CBE to change LOC data.", function() {
+      return chronoMint.setLOC.call(
+        bytes32("Bob's Hard Workers"),
+        bytes32("David's Hard Workers"),
+        bytes32("www.ru"),
+        1000,
+        bytes32fromBase58("QmTeW79w7QQ6Npa3b1d5tANreCDxF2iDaAPsDvW6KtLmfB"),
+        unix, {from:owner}
+      ).then(function(r){
+        return chronoMint.setLOC(
+          bytes32("Bob's Hard Workers"),
+          bytes32("David's Hard Workers"),
+          bytes32("www.ru"),
+          1000,
+          bytes32fromBase58("QmTeW79w7QQ6Npa3b1d5tANreCDxF2iDaAPsDvW6KtLmfB"),
+          unix,{
+            from: owner,
+            gas: 3000000
+          }
+        ).then(function(){
+          return chronoMint.getLOCById.call(0).then(function(r){
+            assert.equal(r[0], bytes32("David's Hard Workers"));
           });
         });
       });
@@ -461,7 +541,7 @@ contract('ChronoMint', function(accounts) {
     });
 
     it("allows CBE member to remove LOC", function() {
-      return chronoMint.removeLOC(bytes32("Bob's Hard Workers"),{
+      return chronoMint.removeLOC(bytes32("David's Hard Workers"),{
         from: accounts[0],
         gas: 3000000
       }).then(function() {
