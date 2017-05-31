@@ -253,6 +253,8 @@ contract('User Manager', function(accounts) {
     }).then(function () {
       return eventsHistory.addVersion(chronoMint.address, "Origin", "Initial version.");
     }).then(function () {
+      return eventsHistory.addVersion(userManager.address, "Origin", "Initial version.");
+    }).then(function () {
       return chronoBankPlatform.issueAsset(SYMBOL, 200000000000, NAME, DESCRIPTION, BASE_UNIT, IS_NOT_REISSUABLE, {
         from: accounts[0],
         gas: 3000000
@@ -309,6 +311,16 @@ contract('User Manager', function(accounts) {
     }).then(function () {
       return assetsManager.claimPlatformOwnership({from: accounts[0]})
     }).then(function(instance) {
+      return ChronoBankPlatformEmitter.at(EventsHistory.address)
+    }).then(function (instance) {
+      var events = instance.Error({fromBlock: "latest"});
+      events.watch(function(error, result) {
+        // This will catch all Transfer events, regardless of how they originated.
+        if (error == null) {
+          console.log(result.args);
+        }
+      })
+    }).then(function () {
       //web3.eth.sendTransaction({to: Exchange.address, value: BALANCE_ETH, from: accounts[0]});
       done();
     }).catch(function (e) { console.log(e); });
@@ -326,6 +338,22 @@ contract('User Manager', function(accounts) {
     it("doesn't show owner1 as a CBE key.", function() {
       return chronoMint.isAuthorized.call(owner1).then(function(r) {
         assert.isNotOk(r);
+      });
+    });
+
+    it("doesn't allows non CBE key to add another CBE key.", function() {
+      return userManager.addCBE(owner1,0x0,{from:owner1}).then(function() {
+        return userManager.isAuthorized.call(owner1).then(function(r){
+          assert.isNotOk(r);
+        });
+      });
+    });
+
+    it("shouldn't allow setRequired signatures 2.", function() {
+      return userManager.setRequired(2).then(function() {
+        return userManager.required.call({from: owner}).then(function(r) {
+          assert.equal(r, 1);
+        });
       });
     });
 

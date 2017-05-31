@@ -8,6 +8,7 @@ var ChronoBankAssetProxy = artifacts.require("./ChronoBankAssetProxy.sol");
 var ChronoBankAssetWithFeeProxy = artifacts.require("./ChronoBankAssetWithFeeProxy.sol");
 var ChronoBankAsset = artifacts.require("./ChronoBankAsset.sol");
 var ChronoBankAssetWithFee = artifacts.require("./ChronoBankAssetWithFee.sol");
+var ChronoMintEmitter = artifacts.require("./ChronoMintEmitter.sol");
 var Exchange = artifacts.require("./Exchange.sol");
 var ExchangeManager = artifacts.require("./ExchangeManager.sol");
 var ERC20Manager = artifacts.require("./ERC20Manager.sol");
@@ -42,6 +43,7 @@ contract('Exchange Manager', function(accounts) {
   var chronoMint;
   var chronoBankPlatform;
   var chronoBankPlatformEmitter;
+  var chronoMintEmitter;
   var contractsManager;
   var eventsHistory;
   var erc20Manager;
@@ -183,6 +185,9 @@ contract('Exchange Manager', function(accounts) {
       return ChronoBankPlatformEmitter.deployed()
     }).then(function (instance) {
       chronoBankPlatformEmitter = instance;
+      return ChronoMintEmitter.deployed()
+    }).then(function (instance) {
+      chronoMintEmitter = instance;
       return EventsHistory.deployed()
     }).then(function (instance) {
       eventsHistory = instance;
@@ -192,6 +197,11 @@ contract('Exchange Manager', function(accounts) {
       });
     }).then(function () {
       return userManager.setupEventsHistory(EventsHistory.address, {
+        from: accounts[0],
+        gas: 3000000
+      });
+    }).then(function () {
+      return exchangeManager.setupEventsHistory(EventsHistory.address, {
         from: accounts[0],
         gas: 3000000
       });
@@ -232,6 +242,10 @@ contract('Exchange Manager', function(accounts) {
       });
     }).then(function () {
       return eventsHistory.addVersion(chronoBankPlatform.address, "Origin", "Initial version.");
+    }).then(function () {
+      return eventsHistory.addVersion(exchangeManager.address, "Origin", "Initial version.");
+    }).then(function () {
+      return eventsHistory.addVersion(userManager.address, "Origin", "Initial version.");
     }).then(function () {
       return chronoBankPlatform.issueAsset(SYMBOL, 200000000000, NAME, DESCRIPTION, BASE_UNIT, IS_NOT_REISSUABLE, {
         from: accounts[0],
@@ -300,6 +314,16 @@ contract('Exchange Manager', function(accounts) {
         from: accounts[0],
         gas: 3000000
       });
+    }).then(function () {
+      return ChronoBankPlatformEmitter.at(EventsHistory.address)
+    }).then(function (instance) {
+      var events = instance.Error({fromBlock: "latest"});
+      events.watch(function(error, result) {
+        // This will catch all Transfer events, regardless of how they originated.
+        if (error == null) {
+          console.log(result.args);
+        }
+      })
     }).then(function () {
       done();
     }).catch(function (e) { console.log(e); });

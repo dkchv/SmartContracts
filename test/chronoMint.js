@@ -218,6 +218,11 @@ contract('ChronoMint', function(accounts) {
         from: accounts[0],
         gas: 3000000
       });
+    }).then(() => {
+      return eventsHistory.addEmitter(chronoMintEmitter.contract.cbeUpdate.getData.apply(this, fakeArgs).slice(0, 10), ChronoMintEmitter.address, {
+        from: accounts[0],
+        gas: 3000000
+      });
     }).then(function () {
       return eventsHistory.addEmitter(chronoBankPlatformEmitter.contract.emitTransfer.getData.apply(this, fakeArgs).slice(0, 10), ChronoBankPlatformEmitter.address, {
         from: accounts[0],
@@ -314,6 +319,16 @@ contract('ChronoMint', function(accounts) {
     }).then(function () {
       return assetsManager.claimPlatformOwnership({from: accounts[0]})
     }).then(function(instance) {
+      return ChronoBankPlatformEmitter.at(EventsHistory.address)
+    }).then(function (instance) {
+      var events = instance.Error({fromBlock: "latest"});
+      events.watch(function(error, result) {
+        // This will catch all Transfer events, regardless of how they originated.
+        if (error == null) {
+          console.log(result.args);
+        }
+      })
+    }).then(function () {
       //web3.eth.sendTransaction({to: Exchange.address, value: BALANCE_ETH, from: accounts[0]});
       done();
     }).catch(function (e) { console.log(e); });
