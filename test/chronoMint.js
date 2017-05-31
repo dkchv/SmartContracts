@@ -534,6 +534,38 @@ contract('ChronoMint', function(accounts) {
       });
     });
 
+    it("doesn't allows non CBE to change LOC status.", function() {
+      return chronoMint.setStatus.call(
+        bytes32("David's Hard Workers"),
+        Status.active, {from:owner1}
+      ).then(function(r){
+        return chronoMint.setStatus(
+          bytes32("David's Hard Workers"),
+          Status.active, {from:owner1}).then(function(){
+          return chronoMint.getLOCById.call(0).then(function(r2){
+            assert.equal(r,false)
+            assert.equal(r2[6], Status.maintenance);
+          });
+        });
+      });
+    });
+
+    it("allows a CBE to change LOC status.", function() {
+      return chronoMint.setStatus.call(
+        bytes32("David's Hard Workers"),
+        Status.active, {from:owner}
+      ).then(function(r){
+        return chronoMint.setStatus(
+          bytes32("David's Hard Workers"),
+          Status.active, {from:owner}).then(function(){
+          return chronoMint.getLOCById.call(0).then(function(r2){
+            assert.equal(r,false)
+            assert.equal(r2[6], Status.active);
+          });
+        });
+      });
+    });
+
     it("Proposed LOC should increment LOCs counter", function() {
       return chronoMint.getLOCCount.call().then(function(r){
         assert.equal(r, 1);

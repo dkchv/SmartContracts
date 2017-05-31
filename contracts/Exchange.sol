@@ -186,15 +186,7 @@ contract Exchange is Owned {
             _error("Insufficient token balance");
             return false;
         }
-        if (_amount > maxAmount) {
-            _error("Amount to high");
-            return false;
-        }
-        if (_amount < minAmount) {
-            _error("Amount to low");
-            return false;
-        }
-
+    
         uint total = _mul(_amount, _price);
         if (this.balance < total) {
             _error("Insufficient ether supply");

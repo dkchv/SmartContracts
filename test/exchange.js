@@ -1,6 +1,7 @@
 var Exchange = artifacts.require("./Exchange.sol");
 var FakeCoin = artifacts.require("./FakeCoin.sol");
 var FakeCoin2 = artifacts.require("./FakeCoin2.sol");
+var EventsHistory = artifacts.require("./EventsHistory.sol");
 var Reverter = require('./helpers/reverter');
 var bytes32 = require('./helpers/bytes32');
 var eventsHelper = require('./helpers/eventsHelper');
@@ -37,6 +38,7 @@ contract('Exchange', (accounts) => {
   before('Set Coin contract address', (done) => {
     Exchange.deployed().then(function (instance) {
       exchange = instance;
+      exchange.setupEventsHistory(EventsHistory.address);
       FakeCoin.deployed().then(function (instance) {
         coin = instance;
         FakeCoin2.deployed().then(function (instance) {
