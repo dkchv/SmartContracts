@@ -207,7 +207,14 @@ contract('Rewards', (accounts) => {
 
   // closePeriod() returns(bool)
   it('should not be possible to close period if period.startDate + closeInterval * 1 days > now', () => {
-    return reward.init(shares.address, ZERO_INTERVAL + 1)
+    return reward.init(contractsManager.address, ZERO_INTERVAL + 1)
+      .then(() => userStorage.addOwner(userManager.address))
+      .then(() => userManager.init(userStorage.address, contractsManager.address))
+      .then(() => timeHolder.init(contractsManager.address, shares.address))
+      .then(() => timeHolder.addListener(reward.address))
+      .then(() => reward.setupEventsHistory(eventsHistory.address))
+      .then(() => eventsHistory.addVersion(reward.address, "Origin", "Initial version."))
+      .then(() => eventsHistory.addEmitter(chronoMintEmitter.contract.emitError.getData.apply(this, fakeArgs).slice(0, 10), chronoMintEmitter.address))
       .then(() => reward.closePeriod.call())
       .then((res) => assert.isFalse(res))
       .then(() => reward.closePeriod())
