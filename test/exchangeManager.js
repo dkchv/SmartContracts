@@ -52,7 +52,6 @@ contract('Exchange Manager', function(accounts) {
   var timeProxyContract;
   var lhProxyContract;
   var exchange;
-  var platform;
   var exchangeManager;
   var rewards;
   var shareable;
@@ -119,9 +118,6 @@ contract('Exchange Manager', function(accounts) {
       chronoMint = instance
       return instance.init(ContractsManager.address)
     }).then(function () {
-      return ChronoBankPlatform.deployed()
-    }).then(function (instance) {
-      platform = instance
       return ChronoBankAsset.deployed()
     }).then(function (instance) {
       timeContract = instance
