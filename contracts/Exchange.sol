@@ -328,7 +328,10 @@ contract Exchange is Owned {
      * Accept all ether to maintain exchange supply.
      */
     function () payable {
-        ReceivedEther(msg.sender, msg.value);
+        if(msg.value != 0)
+            ReceivedEther(msg.sender, msg.value);
+        else
+            throw;
     }
 
 }

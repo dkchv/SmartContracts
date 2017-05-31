@@ -30,7 +30,7 @@ contract FakeCoin {
     }
 
     function () payable {
-
+        throw;
     }
 
 }

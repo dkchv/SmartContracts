@@ -45,6 +45,8 @@ contract ExchangeManager is Managed {
     }
 
     function addExchange(address _exchange) returns(uint) {
+        Exchange(_exchange).buyPrice();
+        Exchange(_exchange).sellPrice();
         if(owners[_exchange].length == 0) {
             exchanges.push(_exchange);
             owners[_exchange].push(msg.sender);

@@ -52,6 +52,7 @@ contract('Exchange Manager', function(accounts) {
   var timeProxyContract;
   var lhProxyContract;
   var exchange;
+  var platform;
   var exchangeManager;
   var rewards;
   var shareable;
@@ -336,13 +337,12 @@ contract('Exchange Manager', function(accounts) {
     });
 
     it("allow add TIME Asset", function() {
-      return assetsManager.addAsset.call(timeProxyContract.address,'TIME', owner).then(function(r) {
+      return assetsManager.addAsset.call(timeProxyContract.address,SYMBOL, owner).then(function(r) {
         console.log(r);
-        return assetsManager.addAsset(timeProxyContract.address,'TIME', owner, {
+        return assetsManager.addAsset(timeProxyContract.address,SYMBOL, owner, {
           from: accounts[0],
           gas: 3000000
         }).then(function(tx) {
-          console.log(tx);
           return assetsManager.getAssets.call().then(function(r) {
             console.log(r);
             assert.equal(r.length,1);
@@ -352,7 +352,7 @@ contract('Exchange Manager', function(accounts) {
     });
 
     it("ERC20Manager contains correct TIME address", function () {
-      return erc20Manager.getTokenAddressBySymbol.call('TIME').then(function (r) {
+      return erc20Manager.getTokenAddressBySymbol.call(SYMBOL).then(function (r) {
         console.log(r);
         assert.equal(r, timeProxyContract.address);
       });
@@ -393,18 +393,10 @@ contract('Exchange Manager', function(accounts) {
     });
 
     it("shouldn't add exchange contract if it is not an exchange contract", function () {
-      return exchangeManager.addExchange.call(coin.address, {
+      return exchangeManager.addExchange(coin.address, {
         from: accounts[0],
         gas: 3000000
-      }).then(function (r) {
-        return exchangeManager.addExchange(coin.address, {
-          from: accounts[0],
-          gas: 3000000
-        }).then(function () {
-          console.log(r);
-          assert.equal(r, 0);
-        });
-      });
+      }).then(assert.fail, () => true)
     });
 
   });
