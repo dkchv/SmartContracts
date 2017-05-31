@@ -388,6 +388,21 @@ contract('Exchange Manager', function(accounts) {
       });
     });
 
+    it("should allow to add exchange contract twice", function () {
+      return exchangeManager.addExchange.call(exchange.address, {
+        from: accounts[0],
+        gas: 3000000
+      }).then(function (r) {
+        return exchangeManager.addExchange(exchange.address, {
+          from: accounts[0],
+          gas: 3000000
+        }).then(function () {
+          console.log(r);
+          assert.equal(r, 0);
+        });
+      });
+    });
+
     it("shouldn't add exchange contract if it is not an exchange contract", function () {
       return exchangeManager.addExchange(coin.address, {
         from: accounts[0],
@@ -395,10 +410,56 @@ contract('Exchange Manager', function(accounts) {
       }).then(assert.fail, () => true)
     });
 
+    it("shouldn't allow exchange owner to delete exchange contract to nonOwner", function () {
+      return exchangeManager.removeExchange.call(exchange.address, {from: accounts[1]}).then(function (r) {
+        assert.equal(r,false);
+      });
+    });
+
+    it("should allow exchange owner to delete exchange contract to owner", function () {
+      return exchangeManager.removeExchange.call(exchange.address).then(function (r) {
+        return exchangeManager.removeExchange(exchange.address).then(function () {
+          assert.equal(r, true);
+        });
+      });
+    });
+
   });
 
   context("Security tests", function () {
 
+    it("should allow to add exchange contract", function () {
+      return exchangeManager.addExchange.call(exchange.address, {
+        from: accounts[1],
+        gas: 3000000
+      }).then(function (r) {
+        return exchangeManager.addExchange(exchange.address, {
+          from: accounts[1],
+          gas: 3000000
+        }).then(function () {
+          console.log(r);
+          assert.equal(r, 2);
+        });
+      });
+    });
+
+    it("should show acccount[1] as exchange contract owner", function () {
+      return exchangeManager.getExchangeOwners.call(exchange.address).then(function (r) {
+        assert.equal(r[0],accounts[1]);
+      });
+    });
+
+    it("shouldn't allow exchange nonOwner to add owner to exchange contract", function () {
+      return exchangeManager.addExchangeOwner.call(exchange.address,owner).then(function (r) {
+        assert.equal(r,false);
+      });
+    });
+
+    it("should allow exchange owner to add new owner to exchange", function () {
+      return exchangeManager.addExchangeOwner.call(exchange.address,owner, {from: accounts[1]}).then(function (r) {
+        assert.equal(r,true);
+      });
+    });
 
   });
 

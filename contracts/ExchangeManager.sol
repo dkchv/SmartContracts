@@ -8,7 +8,7 @@ import {ERC20Interface as Asset} from "./ERC20Interface.sol";
 import {ContractsManagerInterface as ContractsManager} from "./ContractsManagerInterface.sol";
 
 contract ExchangeManager is Managed {
-    address contractsManager;
+
     address[] public exchanges;
     mapping(address => address[]) owners;
 
@@ -21,11 +21,17 @@ contract ExchangeManager is Managed {
     event exchangeRemoved(address user, address exchange);
 
     modifier onlyExchangeOwner(address _exchange) {
-        for(uint i=0;i<owners[_exchange].length;i++) {
-            if (owners[_exchange][i] == msg.sender) {
-                _;
-            }
+        if (isExchangeOwner(_exchange,msg.sender)) {
+            _;
         }
+    }
+
+    function isExchangeOwner(address _exchange, address _owner) returns (bool) {
+        for(uint i=0;i<owners[_exchange].length;i++) {
+            if (owners[_exchange][i] == _owner)
+            return true;
+        }
+        return false;
     }
 
     // Should use interface of the emitter, but address of events history.
@@ -157,4 +163,23 @@ contract ExchangeManager is Managed {
     function getExchangeOwners(address _exchange) returns (address[]) {
         return owners[_exchange];
     }
+
+    function getExchangesForOwner(address owner) constant returns (address[]) {
+        uint counter;
+        uint i;
+        for(i=0;i<exchanges.length;i++) {
+            if(isExchangeOwner(exchanges[i],owner))
+            counter++;
+        }
+        address[] memory result = new address[](counter);
+        counter = 0;
+        for(i=0;i<exchanges.length;i++) {
+            if(isExchangeOwner(exchanges[i],owner)) {
+                result[counter] = exchanges[i];
+                counter++;
+            }
+        }
+        return result;
+    }
+
 }

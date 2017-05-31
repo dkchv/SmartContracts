@@ -3,6 +3,10 @@ pragma solidity ^0.4.8;
 import "./Owned.sol";
 import {ERC20Interface as Asset} from "./ERC20Interface.sol";
 
+contract Emitter {
+    function emitError(bytes32 _message);
+}
+
 /**
  * @title ERC20-Ether exchange contract.
  *
@@ -32,6 +36,10 @@ contract Exchange is Owned {
 
     // Price in wei at which exchange sells tokens.
     uint public sellPrice = 2;
+
+    uint public minAmount;
+
+    uint public maxAmount;
 
     // Fee value for operations 10000 is 0.01.
     uint public feePercent = 10000;
@@ -76,7 +84,7 @@ contract Exchange is Owned {
      *
      * @return success.
      */
-    function setupEventsHistory(address _eventsHistory) onlyAuthorized returns(bool) {
+    function setupEventsHistory(address _eventsHistory) onlyContractOwner returns(bool) {
         if (address(eventsHistory) != 0) {
             return false;
         }
