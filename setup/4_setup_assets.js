@@ -198,6 +198,9 @@ module.exports = (callback) => {
       return ChronoBankPlatformEmitter.deployed()
     }).then(i => {
       chronoBankPlatformEmitter = i
+      return ChronoMintEmitter.deployed()
+    }).then(i => {
+      chronoMintEmitter = i;
       return EventsHistory.deployed()
     }).then(i => {
       eventsHistory = i
@@ -210,7 +213,7 @@ module.exports = (callback) => {
         from: accounts[0],
         gas: 3000000
       })
-    }).then(.then(() => {
+    }).then(() => {
       return userManager.setupEventsHistory(EventsHistory.address, {
         from: accounts[0],
         gas: 3000000
