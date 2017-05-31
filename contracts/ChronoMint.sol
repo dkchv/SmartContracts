@@ -193,9 +193,11 @@ contract ChronoMint is Managed {
     bytes32 publishedHash,
     uint expDate,
     Status status,
-    uint securityPercentage) {
+    uint securityPercentage,
+    bytes32 currency,
+    uint creatrDate) {
         LOC loc = offeringCompanies[_locName];
-        return(loc.name, loc.website, loc.issued, loc.issueLimit, loc.publishedHash, loc.expDate, loc.status, loc.securityPercentage);
+        return(loc.name, loc.website, loc.issued, loc.issueLimit, loc.publishedHash, loc.expDate, loc.status, loc.securityPercentage, loc.currency, loc.createDate);
     }
 
     function getLOCById(uint _id) constant returns(bytes32 name,
@@ -205,9 +207,11 @@ contract ChronoMint is Managed {
     bytes32 publishedHash,
     uint expDate,
     Status status,
-    uint securityPercentage) {
+    uint securityPercentage,
+    bytes32 currency,
+    uint creatrDate) {
         LOC loc = offeringCompanies[offeringCompaniesNames[_id]];
-        return(loc.name, loc.website, loc.issued, loc.issueLimit, loc.publishedHash, loc.expDate, loc.status, loc.securityPercentage);
+        return(loc.name, loc.website, loc.issued, loc.issueLimit, loc.publishedHash, loc.expDate, loc.status, loc.securityPercentage, loc.currency, loc.createDate);
     }
 
     function getLOCNames() constant returns(bytes32[]) {
