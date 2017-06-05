@@ -28,7 +28,7 @@ library ChronoMintEmitter {
     event NewLOC(bytes32 indexed locName, uint version);
     event RemLOC(bytes32 indexed locName, uint version);
     event UpdLOCStatus(bytes32 indexed locName, uint _oldStatus, uint _newStatus, uint version);
-    event UpdLOCValue(bytes32 indexed locName, uint version);
+    event UpdLOCValue(bytes32 indexed newLocName, bytes32 indexed oldLocName, uint version);
     event Reissue(uint value, bytes32 indexed locName, uint version);
     // Something went wrong.
     event Error(bytes32 message, uint version);
@@ -72,8 +72,8 @@ library ChronoMintEmitter {
         UpdLOCStatus(locName, _oldStatus, _newStatus, _getVersion());
     }
 
-    function updLOCValue(bytes32 locName) {
-        UpdLOCValue(locName, _getVersion());
+    function updLOCValue(bytes32 newLocName, bytes32 oldLocName) {
+        UpdLOCValue(newLocName, oldLocName, _getVersion());
     }
 
     function reissue(uint value, bytes32 locName) {

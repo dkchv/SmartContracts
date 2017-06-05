@@ -12,7 +12,7 @@ contract Emitter {
     function newLOC(bytes32 locName);
     function remLOC(bytes32 locName);
     function updLOCStatus(bytes32 locName, uint _oldStatus, uint _newStatus);
-    function updLOCValue(bytes32 locName);
+    function updLOCValue(bytes32 newLocName, bytes32 oldLocName);
     function reissue(uint value, bytes32 locName);
     function hashUpdate(bytes32 oldHash, bytes32 newHash);
     function emitError(bytes32 _message);
@@ -137,10 +137,10 @@ contract ChronoMint is Managed {
         return offeringCompaniesNames.length;
     }
 
-    function setLOC(bytes32 _name, bytes32 _newname, bytes32 _website, uint _issueLimit, bytes32 _publishedHash, uint _expDate) onlyAuthorized() locExists(_name) returns(bool) {
+    function setLOC(bytes32 _name, bytes32 _newName, bytes32 _website, uint _issueLimit, bytes32 _publishedHash, uint _expDate) onlyAuthorized() locExists(_name) returns(bool) {
         LOC loc = offeringCompanies[_name];
         bool changed;
-        if(!(_newname == _name)) {
+        if(!(_newName == _name)) {
             uint _id;
             for (uint i = 0; i < offeringCompaniesNames.length; i++) {
                 if (offeringCompaniesNames[i] == loc.name) {
@@ -148,9 +148,9 @@ contract ChronoMint is Managed {
                     break;
                 }
             }
-            offeringCompaniesNames[_id] = _newname;
-            loc.name = _newname;
-            offeringCompanies[_newname] = loc;
+            offeringCompaniesNames[_id] = _newName;
+            loc.name = _newName;
+            offeringCompanies[_newName] = loc;
             delete offeringCompanies[_name];
         }
         if(!(_website == loc.website)) {
@@ -172,7 +172,7 @@ contract ChronoMint is Managed {
         }
         if(changed) {
             offeringCompanies[_name] = loc;
-            eventsHistory.updLOCValue(_name);
+            eventsHistory.updLOCValue(_newName, _name);
         }
         return true;
     }
@@ -196,7 +196,7 @@ contract ChronoMint is Managed {
     Status status,
     uint securityPercentage,
     bytes32 currency,
-    uint creatrDate) {
+    uint createDate) {
         LOC loc = offeringCompanies[_locName];
         return(loc.name, loc.website, loc.issued, loc.issueLimit, loc.publishedHash, loc.expDate, loc.status, loc.securityPercentage, loc.currency, loc.createDate);
     }
@@ -210,7 +210,7 @@ contract ChronoMint is Managed {
     Status status,
     uint securityPercentage,
     bytes32 currency,
-    uint creatrDate) {
+    uint createDate) {
         LOC loc = offeringCompanies[offeringCompaniesNames[_id]];
         return(loc.name, loc.website, loc.issued, loc.issueLimit, loc.publishedHash, loc.expDate, loc.status, loc.securityPercentage, loc.currency, loc.createDate);
     }
