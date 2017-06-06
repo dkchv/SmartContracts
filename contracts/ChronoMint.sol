@@ -78,13 +78,13 @@ contract ChronoMint is Managed {
     }
 
     modifier locExists(bytes32 _locName) {
-        if (offeringCompanies[_locName].name != bytes32(0)) {
+        if (_locName != 0x0 && offeringCompanies[_locName].name != bytes32(0)) {
             _;
         }
     }
 
     modifier locDoesNotExist(bytes32 _locName) {
-        if (offeringCompanies[_locName].name == bytes32(0)) {
+        if (_locName != 0x0 && offeringCompanies[_locName].name == bytes32(0)) {
             _;
         }
     }
@@ -139,7 +139,7 @@ contract ChronoMint is Managed {
 
     function setLOC(bytes32 _name, bytes32 _newName, bytes32 _website, uint _issueLimit, bytes32 _publishedHash, uint _expDate) onlyAuthorized() locExists(_name) returns(bool) {
         LOC loc = offeringCompanies[_name];
-        bool changed;
+        bool changed = false;
         if(!(_newName == _name)) {
             uint _id;
             for (uint i = 0; i < offeringCompaniesNames.length; i++) {
@@ -174,7 +174,7 @@ contract ChronoMint is Managed {
             offeringCompanies[_name] = loc;
             eventsHistory.updLOCValue(_newName, _name);
         }
-        return true;
+        return changed;
     }
 
     function setStatus(bytes32 _name, Status status) locExists(_name) multisig {
